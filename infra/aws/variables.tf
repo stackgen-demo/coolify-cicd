@@ -98,6 +98,12 @@ variable "opsverse_agent_secret_arn" {
   sensitive   = true
 }
 
+variable "coolify_api_secret_arn" {
+  description = "Existing AWS Secrets Manager secret ARN containing the post-onboarding Coolify API token used only by host-local SSM commands."
+  type        = string
+  sensitive   = true
+}
+
 variable "coolify_installer_sha256" {
   description = "Reviewed SHA-256 of the Coolify installer downloaded by EC2 bootstrap."
   type        = string
