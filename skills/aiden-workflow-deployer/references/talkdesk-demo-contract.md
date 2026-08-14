@@ -89,7 +89,7 @@ Active probes must have a ten-minute maximum, an explicit host allowlist, a requ
 
 Reset only repository and GitHub control state. Do not tear down or modify EC2, ALB, WAF, Coolify, the running application, Aiden resources, Grafana, the OpsVerse agent, or the OpenTelemetry pipeline. Do not invoke the Coolify deploy webhook during reset.
 
-Use a deterministic, manually dispatched reset workflow with a protected `demo-reset` environment. It must:
+Use a deterministic, manually dispatched reset workflow with a protected `demo-reset` environment. It must require no operator-entered run metadata: discover the prior demo context from the latest merged security-controls PR, its linked application PR, repository variables, and the last deployment workflow record. It must:
 
 1. Set the demo state to `resetting` so Aiden ignores reset branches, PRs, comments, and commits.
 2. Record the completed run ID, application PR, controls PR, merge SHAs, deployment UUID, artifact digest, and report location.

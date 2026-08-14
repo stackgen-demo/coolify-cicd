@@ -2,43 +2,6 @@ name: Reset Talkdesk demo
 
 on:
   workflow_dispatch:
-    inputs:
-      application_merge_sha:
-        description: Merge commit for the application PR
-        required: true
-        type: string
-      controls_merge_sha:
-        description: Merge commit for the security-controls PR
-        required: true
-        type: string
-      application_pr:
-        description: Application PR number
-        required: true
-        type: number
-      controls_pr:
-        description: Security-controls PR number
-        required: true
-        type: number
-      controls_branch:
-        description: Recorded security-controls branch (retained for the historical audit trail)
-        required: true
-        type: string
-      completed_run_id:
-        description: Completed demo run ID to preserve in the reset audit trail
-        required: true
-        type: string
-      deployment_uuid:
-        description: Coolify deployment UUID from the completed run
-        required: true
-        type: string
-      image_digest:
-        description: Immutable image digest used by the completed run
-        required: true
-        type: string
-      report_location:
-        description: Artifact URL or evidence report location
-        required: true
-        type: string
 
 permissions:
   contents: write
@@ -60,14 +23,59 @@ jobs:
           fetch-depth: 0
           token: ${{ secrets.RESET_GITHUB_TOKEN }}
 
-      - name: Validate reset inputs
-        env:
-          CONTROLS_BRANCH: ${{ inputs.controls_branch }}
+      - name: Discover previous demo context
+        id: context
         run: |
           set -euo pipefail
-          [[ "${CONTROLS_BRANCH}" =~ ^security-controls/[a-zA-Z0-9._-]+$ ]]
-          git cat-file -e "${{ inputs.application_merge_sha }}^{commit}"
-          git cat-file -e "${{ inputs.controls_merge_sha }}^{commit}"
+          base_branch="${GITHUB_REF_NAME}"
+          controls="$(gh pr list --repo "${GITHUB_REPOSITORY}" --base "${base_branch}" --state merged --limit 100 \
+            --json number,headRefName,mergeCommit,mergedAt \
+            --jq '[.[] | select(.headRefName | startswith("security-controls/"))] | sort_by(.mergedAt) | last')"
+          test -n "${controls}" && test "${controls}" != "null"
+
+          controls_pr="$(jq -r '.number' <<<"${controls}")"
+          controls_branch="$(jq -r '.headRefName' <<<"${controls}")"
+          controls_merge_sha="$(jq -r '.mergeCommit.oid' <<<"${controls}")"
+          [[ "${controls_branch}" =~ ^security-controls/[0-9]+-[a-zA-Z0-9._-]+$ ]]
+          application_pr="${controls_branch#security-controls/}"
+          application_pr="${application_pr%%-*}"
+          git cat-file -e "${controls_merge_sha}^{commit}"
+
+          application="$(gh pr view "${application_pr}" --repo "${GITHUB_REPOSITORY}" --json state,mergeCommit)"
+          application_merge_sha="$(jq -r '.mergeCommit.oid // ""' <<<"${application}")"
+
+          last_context="$(gh variable get DEMO_LAST_RUN_CONTEXT --repo "${GITHUB_REPOSITORY}" 2>/dev/null || true)"
+          if jq -e . >/dev/null 2>&1 <<<"${last_context}"; then
+            completed_run_id="$(jq -r '.github_run_id // ""' <<<"${last_context}")"
+            deployment_uuid="$(jq -r '.deployment_uuid // ""' <<<"${last_context}")"
+            image_digest="$(jq -r '.image_digest // ""' <<<"${last_context}")"
+            report_location="$(jq -r '.report_location // ""' <<<"${last_context}")"
+          else
+            latest_deploy="$(gh run list --repo "${GITHUB_REPOSITORY}" --workflow deploy-demo.yml --limit 100 \
+              --json databaseId,status,conclusion,createdAt,url \
+              --jq '[.[] | select(.status == "completed" and .conclusion != "skipped")] | sort_by(.createdAt) | last')"
+            completed_run_id="$(jq -r '.databaseId // "not-recorded"' <<<"${latest_deploy}")"
+            deployment_uuid="not-recorded"
+            image_digest="$(gh variable get DEMO_IMAGE_DIGEST --repo "${GITHUB_REPOSITORY}")"
+            deploy_url="$(jq -r '.url // ""' <<<"${latest_deploy}")"
+            report_location="${deploy_url:+${deploy_url}#artifacts}"
+          fi
+          image_digest="${image_digest:-$(gh variable get DEMO_IMAGE_DIGEST --repo "${GITHUB_REPOSITORY}")}"
+          completed_run_id="${completed_run_id:-not-recorded}"
+          deployment_uuid="${deployment_uuid:-not-recorded}"
+          report_location="${report_location:-not-recorded}"
+
+          {
+            echo "application_pr=${application_pr}"
+            echo "application_merge_sha=${application_merge_sha}"
+            echo "controls_pr=${controls_pr}"
+            echo "controls_branch=${controls_branch}"
+            echo "controls_merge_sha=${controls_merge_sha}"
+            echo "completed_run_id=${completed_run_id}"
+            echo "deployment_uuid=${deployment_uuid}"
+            echo "image_digest=${image_digest}"
+            echo "report_location=${report_location}"
+          } >> "${GITHUB_OUTPUT}"
 
       - name: Pause demo automations
         run: gh variable set DEMO_STATE --body resetting --repo "${GITHUB_REPOSITORY}"
@@ -83,6 +91,9 @@ jobs:
 
       - name: Create audited reset branch
         id: branch
+        env:
+          APPLICATION_MERGE_SHA: ${{ steps.context.outputs.application_merge_sha }}
+          CONTROLS_MERGE_SHA: ${{ steps.context.outputs.controls_merge_sha }}
         run: |
           set -euo pipefail
           reset_branch="demo-reset/${GITHUB_RUN_ID}"
@@ -99,8 +110,10 @@ jobs:
               git revert --no-edit "${commit_sha}"
             fi
           }
-          revert_recorded_change "${{ inputs.application_merge_sha }}"
-          revert_recorded_change "${{ inputs.controls_merge_sha }}"
+          if [[ -n "${APPLICATION_MERGE_SHA}" ]]; then
+            revert_recorded_change "${APPLICATION_MERGE_SHA}"
+          fi
+          revert_recorded_change "${CONTROLS_MERGE_SHA}"
           node scripts/reset/verify-baseline.mjs
           git push origin "${reset_branch}"
           echo "name=${reset_branch}" >> "${GITHUB_OUTPUT}"
@@ -113,14 +126,14 @@ jobs:
           gh label create demo-reset --color B60205 --description "Operator-approved demo reset" \
             --repo "${GITHUB_REPOSITORY}" 2>/dev/null || true
           body="$(jq -n \
-            --arg completed_run_id '${{ inputs.completed_run_id }}' \
-            --arg application_pr '${{ inputs.application_pr }}' \
-            --arg controls_pr '${{ inputs.controls_pr }}' \
-            --arg application_merge_sha '${{ inputs.application_merge_sha }}' \
-            --arg controls_merge_sha '${{ inputs.controls_merge_sha }}' \
-            --arg deployment_uuid '${{ inputs.deployment_uuid }}' \
-            --arg image_digest '${{ inputs.image_digest }}' \
-            --arg report_location '${{ inputs.report_location }}' \
+            --arg completed_run_id '${{ steps.context.outputs.completed_run_id }}' \
+            --arg application_pr '${{ steps.context.outputs.application_pr }}' \
+            --arg controls_pr '${{ steps.context.outputs.controls_pr }}' \
+            --arg application_merge_sha '${{ steps.context.outputs.application_merge_sha }}' \
+            --arg controls_merge_sha '${{ steps.context.outputs.controls_merge_sha }}' \
+            --arg deployment_uuid '${{ steps.context.outputs.deployment_uuid }}' \
+            --arg image_digest '${{ steps.context.outputs.image_digest }}' \
+            --arg report_location '${{ steps.context.outputs.report_location }}' \
             '{completed_run_id:$completed_run_id,application_pr:$application_pr,controls_pr:$controls_pr,application_merge_sha:$application_merge_sha,controls_merge_sha:$controls_merge_sha,deployment_uuid:$deployment_uuid,image_digest:$image_digest,report_location:$report_location}')"
           reset_pr="$(gh pr create --base "${GITHUB_REF_NAME}" --head "${RESET_BRANCH}" \
             --title "Reset Talkdesk demo after run ${GITHUB_RUN_ID}" \
@@ -131,13 +144,15 @@ jobs:
 
       - name: Preserve historic demo PRs and branches
         env:
-          CONTROLS_BRANCH: ${{ inputs.controls_branch }}
+          APPLICATION_PR: ${{ steps.context.outputs.application_pr }}
+          CONTROLS_BRANCH: ${{ steps.context.outputs.controls_branch }}
+          CONTROLS_PR: ${{ steps.context.outputs.controls_pr }}
         run: |
           set -euo pipefail
           {
             echo "## Historical demo evidence retained"
             echo
-            echo "Application PR #${{ inputs.application_pr }}, security-controls PR #${{ inputs.controls_pr }}, and branch \\`${CONTROLS_BRANCH}\\` were retained."
+            echo "Application PR #${APPLICATION_PR}, security-controls PR #${CONTROLS_PR}, and branch \\`${CONTROLS_BRANCH}\\` were retained."
           } >> "${GITHUB_STEP_SUMMARY}"
 
       - name: Create closed replay PR
