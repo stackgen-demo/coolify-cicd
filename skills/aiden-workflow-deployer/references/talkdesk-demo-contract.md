@@ -46,7 +46,7 @@ Pin every Git module source to the same reviewed tag or commit.
 
 Stages:
 
-1. Validate the allowlisted repository, default branch, triggering application PR, and its current head SHA.
+1. Validate the allowlisted repository, default branch, triggering `demo-application`-labeled application PR, and its current head SHA.
 2. Inventory active security workflows and required checks.
 3. Compare them to the required control manifest.
 4. If controls are missing, copy reviewed workflow templates into a dedicated branch and open one security-controls PR.

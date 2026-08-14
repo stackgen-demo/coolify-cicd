@@ -2,7 +2,7 @@
 
 Repository allowlist: `${repository}`. Default branch: `${default_branch}`. Authorized automation identity: `${github_app_login}`.
 
-1. Confirm `repository_full_name` exactly matches the allowlist, the PR is open and same-repository, its base is `${default_branch}`, it is not labeled `demo-reset`, and `DEMO_STATE` is not `resetting`.
+1. Confirm `repository_full_name` exactly matches the allowlist, the PR is open and same-repository, its base is `${default_branch}`, it has the `demo-application` label, it is not labeled `demo-reset`, and `DEMO_STATE` is not `resetting`.
 2. Capture the application PR head SHA and require it to equal input `head_sha`.
 3. Inspect `.github/workflows` and repository rulesets for `security-gate`. If both reviewed controls and requirement already exist, comment that no change was needed and stop successfully.
 4. Read `demo/control-templates/manifest.json`. Recalculate every source SHA-256 and require equality with the manifest.
