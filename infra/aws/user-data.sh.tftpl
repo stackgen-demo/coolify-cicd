@@ -8,7 +8,15 @@ export DEBIAN_FRONTEND=noninteractive
 sed -i 's|http://|https://|g' /etc/apt/sources.list 2>/dev/null || true
 sed -i 's|http://|https://|g' /etc/apt/sources.list.d/ubuntu.sources 2>/dev/null || true
 apt-get update
-apt-get install --yes awscli ca-certificates curl jq unzip
+apt-get install --yes ca-certificates curl jq unzip
+
+curl --fail --silent --show-error --location \
+  https://awscli.amazonaws.com/awscli-exe-linux-x86_64.zip \
+  --output /tmp/awscliv2.zip
+echo "${awscli_sha256}  /tmp/awscliv2.zip" | sha256sum --check --strict
+unzip -q /tmp/awscliv2.zip -d /tmp
+/tmp/aws/install --bin-dir /usr/local/bin --install-dir /usr/local/aws-cli
+aws --version
 
 curl --fail --silent --show-error --location \
   https://cdn.coollabs.io/coolify/install.sh \
@@ -16,6 +24,52 @@ curl --fail --silent --show-error --location \
 echo "${coolify_sha256}  /tmp/coolify-install.sh" | sha256sum --check --strict
 chmod 0700 /tmp/coolify-install.sh
 /tmp/coolify-install.sh
+
+install -d -m 0755 /usr/local/lib/talkdesk-coolify
+
+cat > /usr/local/bin/talkdesk-coolify-deploy <<'EOF'
+#!/usr/bin/env bash
+set -euo pipefail
+
+application_uuid="$${1:?application UUID is required}"
+if ! [[ "$${application_uuid}" =~ ^[A-Za-z0-9-]+$$ ]]; then
+  echo "invalid Coolify application UUID" >&2
+  exit 64
+fi
+
+coolify_token="$$(aws secretsmanager get-secret-value \
+  --secret-id "${coolify_secret_arn}" \
+  --query SecretString \
+  --output text)"
+trap 'unset coolify_token' EXIT
+
+curl --fail-with-body --silent --show-error \
+  --header "Authorization: Bearer $${coolify_token}" \
+  "http://127.0.0.1:8000/api/v1/applications/$${application_uuid}/start?force=false"
+EOF
+chmod 0750 /usr/local/bin/talkdesk-coolify-deploy
+
+cat > /usr/local/bin/talkdesk-coolify-deployment-status <<'EOF'
+#!/usr/bin/env bash
+set -euo pipefail
+
+deployment_uuid="$${1:?deployment UUID is required}"
+if ! [[ "$${deployment_uuid}" =~ ^[A-Za-z0-9-]+$$ ]]; then
+  echo "invalid Coolify deployment UUID" >&2
+  exit 64
+fi
+
+coolify_token="$$(aws secretsmanager get-secret-value \
+  --secret-id "${coolify_secret_arn}" \
+  --query SecretString \
+  --output text)"
+trap 'unset coolify_token' EXIT
+
+curl --fail-with-body --silent --show-error \
+  --header "Authorization: Bearer $${coolify_token}" \
+  "http://127.0.0.1:8000/api/v1/deployments/$${deployment_uuid}"
+EOF
+chmod 0750 /usr/local/bin/talkdesk-coolify-deployment-status
 
 opsverse_token="$(aws secretsmanager get-secret-value \
   --secret-id "${opsverse_secret_arn}" \

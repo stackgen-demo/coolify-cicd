@@ -98,6 +98,12 @@ variable "opsverse_agent_secret_arn" {
   sensitive   = true
 }
 
+variable "coolify_api_secret_arn" {
+  description = "Existing AWS Secrets Manager secret ARN containing the post-onboarding Coolify API token used only by host-local SSM commands."
+  type        = string
+  sensitive   = true
+}
+
 variable "coolify_installer_sha256" {
   description = "Reviewed SHA-256 of the Coolify installer downloaded by EC2 bootstrap."
   type        = string
@@ -105,6 +111,16 @@ variable "coolify_installer_sha256" {
   validation {
     condition     = can(regex("^[0-9a-f]{64}$", var.coolify_installer_sha256))
     error_message = "coolify_installer_sha256 must be a lowercase SHA-256 digest."
+  }
+}
+
+variable "awscli_installer_sha256" {
+  description = "Reviewed SHA-256 of the AWS CLI v2 Linux installer downloaded by EC2 bootstrap."
+  type        = string
+
+  validation {
+    condition     = can(regex("^[0-9a-f]{64}$", var.awscli_installer_sha256))
+    error_message = "awscli_installer_sha256 must be a lowercase SHA-256 digest."
   }
 }
 

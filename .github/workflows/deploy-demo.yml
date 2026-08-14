@@ -32,9 +32,8 @@ jobs:
     environment: demo-deploy
     env:
       AWS_REGION: ${{ vars.AWS_REGION }}
-      COOLIFY_BASE_URL: ${{ vars.COOLIFY_BASE_URL }}
-      COOLIFY_DEPLOY_WEBHOOK: ${{ secrets.COOLIFY_DEPLOY_WEBHOOK }}
-      COOLIFY_TOKEN: ${{ secrets.COOLIFY_TOKEN }}
+      COOLIFY_APPLICATION_UUID: ${{ vars.COOLIFY_APPLICATION_UUID }}
+      COOLIFY_INSTANCE_ID: ${{ vars.COOLIFY_INSTANCE_ID }}
       DEMO_IMAGE_DIGEST: ${{ vars.DEMO_IMAGE_DIGEST }}
       EVIDENCE_BUCKET: ${{ vars.EVIDENCE_BUCKET }}
       TARGET_URL: ${{ vars.DEMO_TARGET_URL }}
@@ -67,32 +66,20 @@ jobs:
             --jq '[.check_runs[] | select(.name == "security-gate")] | sort_by(.completed_at) | last | .conclusion')"
           test "${conclusion}" = "success"
 
-      - name: Trigger Coolify redeployment
-        id: coolify
-        env:
-          DEMO_RUN_ID: ${{ steps.identity.outputs.demo_run_id }}
-        run: |
-          set -euo pipefail
-          test -n "${COOLIFY_DEPLOY_WEBHOOK}"
-          test -n "${COOLIFY_TOKEN}"
-          response="$(curl --fail-with-body --silent --show-error \
-            --request GET \
-            --header "Authorization: Bearer ${COOLIFY_TOKEN}" \
-            --header "X-Demo-Run-Id: ${DEMO_RUN_ID}" \
-            "${COOLIFY_DEPLOY_WEBHOOK}")"
-          deployment_uuid="$(jq -er '.deployments[0].deployment_uuid // .deployment_uuid' <<<"${response}")"
-          echo "deployment_uuid=${deployment_uuid}" >> "${GITHUB_OUTPUT}"
-
-      - name: Watch Coolify deployment
-        env:
-          DEPLOYMENT_UUID: ${{ steps.coolify.outputs.deployment_uuid }}
-        run: scripts/postdeploy/wait-for-coolify.sh
-
-      - name: Configure AWS credentials
+      - name: Configure AWS credentials for private Coolify control and evidence
         uses: aws-actions/configure-aws-credentials@7474bc4690e29a8392af63c5b98e7449536d5c3a # v4
         with:
           role-to-assume: ${{ vars.POSTDEPLOY_AWS_ROLE_ARN }}
           aws-region: ${{ vars.AWS_REGION }}
+
+      - name: Trigger Coolify redeployment through SSM
+        id: coolify
+        run: scripts/postdeploy/trigger-coolify-via-ssm.sh
+
+      - name: Watch Coolify deployment
+        env:
+          DEPLOYMENT_UUID: ${{ steps.coolify.outputs.deployment_uuid }}
+        run: scripts/postdeploy/wait-for-coolify-via-ssm.sh
 
       - name: Install bounded scanner dependencies
         run: |

@@ -2,6 +2,10 @@ data "aws_availability_zones" "available" {
   state = "available"
 }
 
+data "aws_caller_identity" "current" {}
+
+data "aws_partition" "current" {}
+
 data "aws_ssm_parameter" "ubuntu_ami" {
   name = "/aws/service/canonical/ubuntu/server/24.04/stable/current/amd64/hvm/ebs-gp3/ami-id"
 }
@@ -188,9 +192,9 @@ resource "aws_iam_role_policy_attachment" "ssm" {
 
 data "aws_iam_policy_document" "ec2_runtime" {
   statement {
-    sid       = "ReadOpsVerseToken"
+    sid       = "ReadRuntimeTokens"
     actions   = ["secretsmanager:GetSecretValue"]
-    resources = [var.opsverse_agent_secret_arn]
+    resources = [var.opsverse_agent_secret_arn, var.coolify_api_secret_arn]
   }
 
   statement {
@@ -262,6 +266,21 @@ data "aws_iam_policy_document" "github_postdeploy" {
     actions   = ["s3:PutObject"]
     resources = ["${aws_s3_bucket.evidence.arn}/runs/*"]
   }
+
+  statement {
+    sid     = "InvokeCoolifyHostCommands"
+    actions = ["ssm:SendCommand"]
+    resources = [
+      "arn:${data.aws_partition.current.partition}:ssm:${var.aws_region}::document/AWS-RunShellScript",
+      "arn:${data.aws_partition.current.partition}:ec2:${var.aws_region}:${data.aws_caller_identity.current.account_id}:instance/${aws_instance.coolify.id}",
+    ]
+  }
+
+  statement {
+    sid       = "ReadCoolifyHostCommandResults"
+    actions   = ["ssm:GetCommandInvocation"]
+    resources = ["*"]
+  }
 }
 
 resource "aws_iam_role_policy" "github_postdeploy" {
@@ -294,8 +313,10 @@ resource "aws_instance" "coolify" {
   }
 
   user_data = templatefile("${path.module}/user-data.sh.tftpl", {
+    awscli_sha256         = var.awscli_installer_sha256
     aws_region            = var.aws_region
     coolify_sha256        = var.coolify_installer_sha256
+    coolify_secret_arn    = var.coolify_api_secret_arn
     logs_host             = var.opsverse_logs_host
     metrics_host          = var.opsverse_metrics_host
     opsverse_sha256       = var.opsverse_installer_sha256
@@ -309,6 +330,10 @@ resource "aws_instance" "coolify" {
     precondition {
       condition     = startswith(var.opsverse_agent_secret_arn, "arn:aws:secretsmanager:")
       error_message = "opsverse_agent_secret_arn must reference an existing Secrets Manager secret containing a rotated token."
+    }
+    precondition {
+      condition     = startswith(var.coolify_api_secret_arn, "arn:aws:secretsmanager:")
+      error_message = "coolify_api_secret_arn must reference an existing Secrets Manager secret containing the Coolify API token after onboarding."
     }
   }
 }
