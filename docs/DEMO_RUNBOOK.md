@@ -1,5 +1,8 @@
 # Demo deployment and operation runbook
 
+> E2E bootstrap exercise: this documentation-only marker verifies the
+> security-control bootstrap path without changing the reviewed runtime image.
+
 ## 1. Rotate and separate credentials
 
 Do not reuse any credential that appeared in chat. Rotate the OpsVerse agent token, ObserveNow writer password, Grafana administrator password, and any related backend credential before deployment.
