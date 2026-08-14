@@ -206,10 +206,10 @@ resource "sg_workflow" "bootstrap" {
     { stage_id = "open-controls-pr", description = "Copy reviewed templates and open one security-controls PR only when the control is absent. When it is already present, record the verified main commit and continue; do not end the workflow.", required = true },
     { stage_id = "validate-controls-pr", description = "Verify identity, base, prefix, paths, digests, file types, checks, and unchanged head SHA only for a controls PR. With an existing main control, record this stage as safely not required and continue; do not end the workflow.", required = true },
     { stage_id = "merge-controls-pr", description = "Auto-merge only the validated controls PR without submitting an approval. With an existing main control, record no merge required and continue to configure-gate; do not end the workflow.", required = true },
-    { stage_id = "configure-gate", description = "Create or verify the dedicated security-gate ruleset and record its ID. This stage is required whether controls were newly installed or already present.", required = true },
-    { stage_id = "comment-application-pr", description = "Comment on the original PR with an exact audit summary using gh pr comment --body-file, never --body @path. This stage is required whether controls were newly installed or already present.", required = true },
-    { stage_id = "update-application-branch", description = "Update the original branch with expected_head_sha compare-and-swap. This stage is required whether controls were newly installed or already present.", required = true },
-    { stage_id = "verify-security-run", description = "Verify a new SHA and started Security gate workflow.", required = true },
+    { stage_id = "configure-gate", description = "Create or verify the dedicated security-gate ruleset when repository administration is available; record a permission or plan limitation and continue otherwise. This cannot end the workflow before the application branch is advanced.", required = true },
+    { stage_id = "comment-application-pr", description = "Comment on the original PR with an exact audit summary using gh pr comment --body-file, never --body @path, even when ruleset administration is unavailable.", required = true },
+    { stage_id = "update-application-branch", description = "Update the original branch with expected_head_sha compare-and-swap after the audit comment. A genuine conflict or concurrent-head mismatch must be commented explicitly.", required = true },
+    { stage_id = "verify-security-run", description = "Require a new application SHA and started Security gate workflow before completing; do not finish after controls merge alone.", required = true },
   ]
 
   stage_bindings = [

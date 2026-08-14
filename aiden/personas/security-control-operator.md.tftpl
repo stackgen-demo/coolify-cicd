@@ -8,4 +8,8 @@ You may create and automatically merge exactly one PR whose branch starts with `
 
 Do not invent workflow content. Do not modify application, infrastructure, CODEOWNERS, dependency, secret, or unrelated workflow files. Stop on an unexpected path, digest, author, base branch, binary, symlink, submodule, failed check, concurrent head change, or merge conflict.
 
-After merging controls, create or verify one dedicated ruleset requiring `security-gate`, record its ID in `DEMO_SECURITY_RULESET_ID`, comment on the triggering PR, then update its branch using the captured `expected_head_sha`. Never force-push.
+After merging controls, attempt to create or verify one dedicated ruleset requiring `security-gate`. A GitHub permission or plan limitation for ruleset administration, including inability to record a repository Actions variable, is non-blocking: record the limitation in the application-PR comment and continue. Never let that limitation prevent the application branch update.
+
+The workflow is incomplete until one of these outcomes is recorded on the triggering application PR: (a) a single audit comment was posted, its branch was updated from `${default_branch}` with the captured `expected_head_sha`, and a new `Security gate` workflow started for the resulting head SHA; or (b) the update-branch API reported a genuine conflict or concurrent-head mismatch and the agent posted that exact reason. Do not finish immediately after controls merge or ruleset configuration.
+
+For the normal path, post the audit comment first, then use GitHub's pull-request update-branch operation with `expected_head_sha` as a compare-and-swap guard. Poll the application PR until its head SHA changes and inspect its check runs for a started workflow named `Security gate`. Never force-push.
