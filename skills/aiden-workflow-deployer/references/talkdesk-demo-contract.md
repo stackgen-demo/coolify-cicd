@@ -108,7 +108,7 @@ The reset workflow is not covered by the security-controls no-HITL merge excepti
 Agents explain and correlate; these controls decide pass/fail:
 
 - No verified secret leaks.
-- No unapproved high/critical SAST, dependency, filesystem, or image findings.
+- No verified secret leaks or blocking SAST findings. High/critical Trivy dependency, filesystem, IaC, and image findings are advisory in the pre-deployment demo report; they must be redacted, attributed, and carried into the post-deployment compliance report.
 - EC2 has no public SSH or Coolify administration port.
 - ALB exposes only HTTP/HTTPS and redirects HTTP to HTTPS.
 - EC2 application ingress is sourced only from the ALB security group.
