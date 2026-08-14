@@ -4,7 +4,7 @@ on:
   workflow_dispatch:
 
 permissions:
-  actions: write
+  actions: read
   contents: write
   pull-requests: write
 
@@ -17,6 +17,7 @@ jobs:
     runs-on: ubuntu-24.04
     environment: demo-reset
     env:
+      DEMO_IMAGE_DIGEST: ${{ vars.DEMO_IMAGE_DIGEST }}
       GH_TOKEN: ${{ github.token }}
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
@@ -45,23 +46,15 @@ jobs:
           application="$(gh pr view "${application_pr}" --repo "${GITHUB_REPOSITORY}" --json state,mergeCommit)"
           application_merge_sha="$(jq -r '.mergeCommit.oid // ""' <<<"${application}")"
 
-          last_context="$(gh variable get DEMO_LAST_RUN_CONTEXT --repo "${GITHUB_REPOSITORY}" 2>/dev/null || true)"
-          if jq -e . >/dev/null 2>&1 <<<"${last_context}"; then
-            completed_run_id="$(jq -r '.github_run_id // ""' <<<"${last_context}")"
-            deployment_uuid="$(jq -r '.deployment_uuid // ""' <<<"${last_context}")"
-            image_digest="$(jq -r '.image_digest // ""' <<<"${last_context}")"
-            report_location="$(jq -r '.report_location // ""' <<<"${last_context}")"
-          else
-            latest_deploy="$(gh run list --repo "${GITHUB_REPOSITORY}" --workflow deploy-demo.yml --limit 100 \
-              --json databaseId,status,conclusion,createdAt,url \
-              --jq '[.[] | select(.status == "completed" and .conclusion != "skipped")] | sort_by(.createdAt) | last')"
-            completed_run_id="$(jq -r '.databaseId // "not-recorded"' <<<"${latest_deploy}")"
-            deployment_uuid="not-recorded"
-            image_digest="$(gh variable get DEMO_IMAGE_DIGEST --repo "${GITHUB_REPOSITORY}")"
-            deploy_url="$(jq -r '.url // ""' <<<"${latest_deploy}")"
-            report_location="${deploy_url:+${deploy_url}#artifacts}"
-          fi
-          image_digest="${image_digest:-$(gh variable get DEMO_IMAGE_DIGEST --repo "${GITHUB_REPOSITORY}")}"
+          latest_deploy="$(gh run list --repo "${GITHUB_REPOSITORY}" --workflow deploy-demo.yml --limit 100 \
+            --json databaseId,status,conclusion,createdAt,url \
+            --jq '[.[] | select(.status == "completed" and .conclusion != "skipped")] | sort_by(.createdAt) | last')"
+          completed_run_id="$(jq -r '.databaseId // "not-recorded"' <<<"${latest_deploy}")"
+          deployment_uuid="not-recorded"
+          image_digest="${DEMO_IMAGE_DIGEST}"
+          deploy_url="$(jq -r '.url // ""' <<<"${latest_deploy}")"
+          report_location="${deploy_url:+${deploy_url}#artifacts}"
+          test -n "${image_digest}"
           completed_run_id="${completed_run_id:-not-recorded}"
           deployment_uuid="${deployment_uuid:-not-recorded}"
           report_location="${report_location:-not-recorded}"
@@ -77,18 +70,6 @@ jobs:
             echo "image_digest=${image_digest}"
             echo "report_location=${report_location}"
           } >> "${GITHUB_OUTPUT}"
-
-      - name: Pause demo automations
-        run: gh variable set DEMO_STATE --body resetting --repo "${GITHUB_REPOSITORY}"
-
-      - name: Remove dedicated demo security ruleset
-        env:
-          RULESET_ID: ${{ vars.DEMO_SECURITY_RULESET_ID }}
-        run: |
-          set -euo pipefail
-          if [[ -n "${RULESET_ID}" ]]; then
-            gh api --method DELETE "repos/${GITHUB_REPOSITORY}/rulesets/${RULESET_ID}"
-          fi
 
       - name: Create audited reset branch
         id: branch
@@ -194,10 +175,3 @@ jobs:
             echo
             echo "Reopen [replay application PR #${replay_pr}](${replay_url}) to start the next demo. Its branch is intentionally retained."
           } >> "${GITHUB_STEP_SUMMARY}"
-
-      - name: Restore ready state
-        if: success()
-        run: |
-          new_run_id="$(cat /proc/sys/kernel/random/uuid)"
-          gh variable set DEMO_RUN_ID --body "${new_run_id}" --repo "${GITHUB_REPOSITORY}"
-          gh variable set DEMO_STATE --body ready --repo "${GITHUB_REPOSITORY}"
