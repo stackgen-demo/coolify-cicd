@@ -95,7 +95,7 @@ Use a deterministic, manually dispatched reset workflow with a protected `demo-r
 2. Record the completed run ID, application PR, controls PR, merge SHAs, deployment UUID, artifact digest, and report location.
 3. Remove the demo-installed `security-gate` requirement from the repository ruleset or branch protection configuration.
 4. Restore the repository working tree by reverting the known application and security-controls merge commits. Create revert commits or a reset PR; never force-push or rewrite the default branch.
-5. Close any remaining demo PRs and delete only branches whose exact names were recorded for that demo run.
+5. Preserve all historic demo PRs and branches so prior runs remain available for the demonstration. Create a new closed, labeled replay application PR from the reset baseline, retain its branch, and clearly instruct the operator to reopen it to trigger the next demo run.
 6. Verify that the repository matches the declared baseline manifest and that the security workflow files and policies installed by the demo are absent.
 7. Set a new `demo_run_id`, return the demo state to `ready`, and re-enable the bootstrap trigger.
 

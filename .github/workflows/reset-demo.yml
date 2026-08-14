@@ -20,7 +20,7 @@ on:
         required: true
         type: number
       controls_branch:
-        description: Exact security-controls branch to delete
+        description: Recorded security-controls branch (retained for the historical audit trail)
         required: true
         type: string
       completed_run_id:
@@ -126,16 +126,58 @@ jobs:
             --title "Reset Talkdesk demo after run ${GITHUB_RUN_ID}" \
             --label demo-reset \
             --body "Operator-approved reset. No runtime deployment.\n\n\`\`\`json\n${body}\n\`\`\`")"
-          gh pr merge "${reset_pr}" --merge --admin --delete-branch
+          # Keep the reset PR branch as part of the demo's audit history.
+          gh pr merge "${reset_pr}" --merge --admin
 
-      - name: Close recorded PRs and remove exact controls branch
+      - name: Preserve historic demo PRs and branches
         env:
           CONTROLS_BRANCH: ${{ inputs.controls_branch }}
         run: |
           set -euo pipefail
-          gh pr close "${{ inputs.application_pr }}" --repo "${GITHUB_REPOSITORY}" 2>/dev/null || true
-          gh pr close "${{ inputs.controls_pr }}" --repo "${GITHUB_REPOSITORY}" 2>/dev/null || true
-          gh api --method DELETE "repos/${GITHUB_REPOSITORY}/git/refs/heads/${CONTROLS_BRANCH}" 2>/dev/null || true
+          {
+            echo "## Historical demo evidence retained"
+            echo
+            echo "Application PR #${{ inputs.application_pr }}, security-controls PR #${{ inputs.controls_pr }}, and branch \\`${CONTROLS_BRANCH}\\` were retained."
+          } >> "${GITHUB_STEP_SUMMARY}"
+
+      - name: Create closed replay PR
+        id: replay
+        run: |
+          set -euo pipefail
+          base_branch="${GITHUB_REF_NAME}"
+          replay_branch="demo-replay/${GITHUB_RUN_ID}"
+          git fetch origin "${base_branch}"
+          git switch -C "${replay_branch}" "origin/${base_branch}"
+          git config user.name "talkdesk-demo-reset[bot]"
+          git config user.email "talkdesk-demo-reset[bot]@users.noreply.github.com"
+          mkdir -p demo
+          printf '%s\\n' \
+            '# Demo replay marker' \
+            '' \
+            'This harmless change exists only to provide a repeatable application PR for the next demo run.' \
+            "Reset workflow run: ${GITHUB_RUN_ID}" \
+            > demo/replay-marker.md
+          git add demo/replay-marker.md
+          git commit -m "Create reusable demo replay PR"
+          git push origin "${replay_branch}"
+
+          gh label create demo-application --color 1D76DB \
+            --description "Application PR used to start the security demo" \
+            --repo "${GITHUB_REPOSITORY}" 2>/dev/null || true
+          replay_url="$(gh pr create --base "${base_branch}" --head "${replay_branch}" \
+            --title "Replay Talkdesk security demo" \
+            --label demo-application \
+            --body "This PR is deliberately closed after reset. Reopen it to start a fresh security-controls bootstrap run. The only change is a harmless replay marker, which the next reset will revert.")"
+          replay_pr="$(gh pr view "${replay_url}" --repo "${GITHUB_REPOSITORY}" --json number --jq .number)"
+          gh pr close "${replay_pr}" --repo "${GITHUB_REPOSITORY}" \
+            --comment "Reset complete. Reopen this PR to trigger the next demo run."
+          echo "number=${replay_pr}" >> "${GITHUB_OUTPUT}"
+          echo "url=${replay_url}" >> "${GITHUB_OUTPUT}"
+          {
+            echo "## Next demo trigger"
+            echo
+            echo "Reopen [replay application PR #${replay_pr}](${replay_url}) to start the next demo. Its branch is intentionally retained."
+          } >> "${GITHUB_STEP_SUMMARY}"
 
       - name: Restore ready state
         if: success()
