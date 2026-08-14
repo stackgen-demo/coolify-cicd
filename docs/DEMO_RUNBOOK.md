@@ -79,6 +79,8 @@ The root creates these Automation webhook targets:
 - `pr-security-review-talkdesk-demo`: called after deterministic PR jobs finish;
 - `postdeploy-adversarial-assurance-talkdesk-demo`: called after deployment evidence is collected.
 
+The post-deployment workflow publishes the SOC 2 assessment first, then creates one Linear issue through the existing `devops-linear` integration. The issue uses `demo_run_id` as its retry-safe marker and contains only redacted results and evidence links.
+
 The sensitive `webhook_payload_urls` output contains authenticated trigger URLs. Store them directly as GitHub secrets; do not print them.
 
 ## 7. Configure GitHub

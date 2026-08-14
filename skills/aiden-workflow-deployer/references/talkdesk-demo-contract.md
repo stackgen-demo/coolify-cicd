@@ -81,9 +81,12 @@ Stages:
 4. Run bounded follow-up HTTP probes only when evidence justifies them.
 5. Query ObserveNow for the deployment correlation ID across metrics, logs, and traces.
 6. Evaluate the policy control catalog.
-7. Publish one redacted compliance assessment.
+7. Publish one redacted SOC 2 compliance assessment.
+8. After the assessment is published, create one redacted Linear issue containing its result and evidence links. Use the `demo_run_id` as the idempotency marker so retries reuse the same issue.
 
 Active probes must have a ten-minute maximum, an explicit host allowlist, a request cap, and no destructive methods, denial-of-service, persistence, credential stuffing, or lateral movement.
+
+The Linear issue is an authorized post-assessment write performed by a dedicated least-privilege publisher agent. That agent has only the configured Linear integration and may bypass HITL only for its `create_issue` tool. It must not create or modify Linear teams, projects, labels, or unrelated issues.
 
 ## Demo Reset
 

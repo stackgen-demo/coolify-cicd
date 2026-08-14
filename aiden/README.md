@@ -23,7 +23,7 @@ python3 ../skills/aiden-workflow-deployer/scripts/discover_workspace.py \
 
 `Demo Workspace` currently resolves to project
 `62e29120-d230-4d4c-ba0d-3426e887d697`. This root is configured to reuse
-`github-integration`, `sandbox-grafana`, `stackgen-sandbox`, `demo-runner`, and
+`github-integration`, `sandbox-grafana`, `stackgen-sandbox`, `devops-linear`, `demo-runner`, and
 the selected workspace model and shared policies. It does not need their
 underlying credential values.
 

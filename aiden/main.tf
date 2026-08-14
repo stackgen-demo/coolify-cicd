@@ -11,12 +11,14 @@ locals {
   github_integration_name  = data.sg_guild_integration.github.name
   grafana_integration_name = data.sg_guild_integration.grafana.name
   aws_integration_name     = data.sg_guild_integration.aws.name
+  linear_integration_name  = data.sg_guild_integration.linear.name
   remote_runner_name       = data.sg_remote_runner.demo.name
 
   agent_names = {
-    bootstrap  = "security-control-operator${var.name_suffix}"
-    pr_review  = "security-evidence-analyst${var.name_suffix}"
-    postdeploy = "postdeploy-assessor${var.name_suffix}"
+    bootstrap     = "security-control-operator${var.name_suffix}"
+    pr_review     = "security-evidence-analyst${var.name_suffix}"
+    postdeploy    = "postdeploy-assessor${var.name_suffix}"
+    linear_ticket = "soc2-linear-publisher${var.name_suffix}"
   }
 }
 
@@ -33,6 +35,10 @@ data "sg_guild_integration" "grafana" {
 
 data "sg_guild_integration" "aws" {
   name = var.aws_integration_name
+}
+
+data "sg_guild_integration" "linear" {
+  name = var.linear_integration_name
 }
 
 data "sg_remote_runner" "demo" {
@@ -53,9 +59,10 @@ resource "terraform_data" "prerequisites" {
       condition = (
         data.sg_guild_integration.github.type == "github" && data.sg_guild_integration.github.enabled &&
         data.sg_guild_integration.grafana.type == "grafana" && data.sg_guild_integration.grafana.enabled &&
-        data.sg_guild_integration.aws.type == "aws" && data.sg_guild_integration.aws.enabled
+        data.sg_guild_integration.aws.type == "aws" && data.sg_guild_integration.aws.enabled &&
+        data.sg_guild_integration.linear.type == "linear" && data.sg_guild_integration.linear.enabled
       )
-      error_message = "The selected existing GitHub, Grafana, and AWS integrations must have the expected type and be enabled."
+      error_message = "The selected existing GitHub, Grafana, AWS, and Linear integrations must have the expected type and be enabled."
     }
     precondition {
       condition     = local.policy_ids.dangerous_ops != "" && local.policy_ids.data_risk_pii != ""
@@ -135,11 +142,34 @@ resource "sg_agent" "postdeploy" {
     local.grafana_integration_name,
   ]
   remote_runners = [local.remote_runner_name]
-  hitl           = { always_allowed = ["note", "read_notes"] }
+  hitl = {
+    always_allowed = [
+      "note",
+      "read_notes",
+    ]
+  }
   auto_approve_tools = [
     { tool = "${local.github_integration_name}_execute_series" },
     { tool = "${local.remote_runner_name}_execute_command" },
   ]
+
+  depends_on = [terraform_data.prerequisites]
+}
+
+resource "sg_agent" "linear_ticket" {
+  name        = local.agent_names.linear_ticket
+  persona     = templatefile("${path.module}/personas/soc2-linear-publisher.md.tftpl", { repository = var.repository_full_name })
+  model_names = local.model_names
+  integrations = [
+    local.linear_integration_name,
+  ]
+  hitl = {
+    always_allowed = [
+      "note",
+      "read_notes",
+      "${local.linear_integration_name}_create_issue",
+    ]
+  }
 
   depends_on = [terraform_data.prerequisites]
 }
@@ -151,14 +181,15 @@ resource "sg_agent_budget" "custom" {
   limit_usd   = var.daily_agent_budget_usd
   period_type = "daily"
 
-  depends_on = [sg_agent.bootstrap, sg_agent.pr_review, sg_agent.postdeploy]
+  depends_on = [sg_agent.bootstrap, sg_agent.pr_review, sg_agent.postdeploy, sg_agent.linear_ticket]
 }
 
 resource "sg_agent_policy_attachment" "dangerous_ops" {
   for_each = {
-    bootstrap  = sg_agent.bootstrap.name
-    pr_review  = sg_agent.pr_review.name
-    postdeploy = sg_agent.postdeploy.name
+    bootstrap     = sg_agent.bootstrap.name
+    pr_review     = sg_agent.pr_review.name
+    postdeploy    = sg_agent.postdeploy.name
+    linear_ticket = sg_agent.linear_ticket.name
   }
 
   agent_name = each.value
@@ -168,6 +199,12 @@ resource "sg_agent_policy_attachment" "dangerous_ops" {
 
 resource "sg_agent_policy_attachment" "postdeploy_data_risk" {
   agent_name = sg_agent.postdeploy.name
+  policy_id  = local.policy_ids.data_risk_pii
+  enabled    = true
+}
+
+resource "sg_agent_policy_attachment" "linear_ticket_data_risk" {
+  agent_name = sg_agent.linear_ticket.name
   policy_id  = local.policy_ids.data_risk_pii
   enabled    = true
 }
@@ -252,7 +289,7 @@ resource "sg_workflow" "pr_review" {
 resource "sg_workflow" "postdeploy" {
   name        = "postdeploy-adversarial-assurance${var.name_suffix}"
   domain      = "security"
-  description = "Correlate bounded post-deployment AWS, network, application, and observability evidence and publish compliance status."
+  description = "Correlate bounded post-deployment AWS, network, application, and observability evidence, publish the SOC 2 assessment, and create one Linear ticket."
   approve     = true
 
   required_inputs = ["repository_full_name", "commit_sha", "image_digest", "coolify_deployment_uuid", "target_url", "aws_region", "demo_run_id", "evidence_run_id", "report_location"]
@@ -265,7 +302,8 @@ resource "sg_workflow" "postdeploy" {
     { stage_id = "bounded-follow-up", description = "Run only justified allowlisted non-destructive HTTP probes.", required = true },
     { stage_id = "correlate-observability", description = "Confirm demo_run_id in VictoriaMetrics, Loki, and Jaeger and validate OpsVerse health.", required = true },
     { stage_id = "evaluate-controls", description = "Evaluate the deterministic policy decision and explain failures without overriding it.", required = true },
-    { stage_id = "publish-assessment", description = "Publish one redacted compliance assessment with evidence links.", required = true },
+    { stage_id = "publish-assessment", description = "Publish one redacted SOC 2 compliance assessment with evidence links.", required = true },
+    { stage_id = "create-linear-ticket", description = "After the SOC 2 assessment is published, create one redacted Linear ticket containing its results and evidence links.", required = true },
   ]
 
   stage_bindings = [
@@ -276,6 +314,7 @@ resource "sg_workflow" "postdeploy" {
     { stage_id = "correlate-observability", agent_ref = sg_agent.postdeploy.name, stage_depends_on = ["read-aws-posture", "bounded-follow-up"], runbook_refs = [sg_runbook_sop.postdeploy.name], skill_refs = [sg_runbook_sop.postdeploy.name] },
     { stage_id = "evaluate-controls", agent_ref = sg_agent.postdeploy.name, stage_depends_on = ["correlate-observability"], runbook_refs = [sg_runbook_sop.postdeploy.name], skill_refs = [sg_runbook_sop.postdeploy.name] },
     { stage_id = "publish-assessment", agent_ref = sg_agent.postdeploy.name, stage_depends_on = ["evaluate-controls"], runbook_refs = [sg_runbook_sop.postdeploy.name], skill_refs = [sg_runbook_sop.postdeploy.name] },
+    { stage_id = "create-linear-ticket", agent_ref = sg_agent.linear_ticket.name, stage_depends_on = ["publish-assessment"], runbook_refs = [sg_runbook_sop.postdeploy.name], skill_refs = [sg_runbook_sop.postdeploy.name] },
   ]
 }
 

@@ -76,6 +76,12 @@ variable "aws_integration_name" {
   default = "stackgen-sandbox"
 }
 
+variable "linear_integration_name" {
+  description = "Existing enabled Linear integration used to create the post-assessment SOC 2 ticket."
+  type        = string
+  default     = "devops-linear"
+}
+
 variable "aws_region" {
   type    = string
   default = "us-east-1"
