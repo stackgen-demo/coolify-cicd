@@ -101,7 +101,7 @@ Use a deterministic, manually dispatched reset workflow with a protected `demo-r
 
 Preserve Aiden execution history, compliance reports, Coolify deployment history, and observability data. Dashboards must filter by `demo_run_id` so previous runs remain available without contaminating the next demonstration.
 
-The reset workflow is not covered by the security-controls no-HITL merge exception. Reset requires explicit operator dispatch and any approval configured on the protected `demo-reset` environment.
+The reset workflow is not covered by the security-controls no-HITL merge exception. Reset requires explicit operator dispatch and any approval configured on the protected `demo-reset` environment. It uses the scoped GitHub Actions token with `actions: write`, `contents: write`, and `pull-requests: write`; it has no separately managed reset-token prerequisite.
 
 ## Deterministic Controls
 

@@ -4,6 +4,7 @@ on:
   workflow_dispatch:
 
 permissions:
+  actions: write
   contents: write
   pull-requests: write
 
@@ -16,12 +17,12 @@ jobs:
     runs-on: ubuntu-24.04
     environment: demo-reset
     env:
-      GH_TOKEN: ${{ secrets.RESET_GITHUB_TOKEN }}
+      GH_TOKEN: ${{ github.token }}
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
         with:
           fetch-depth: 0
-          token: ${{ secrets.RESET_GITHUB_TOKEN }}
+          token: ${{ github.token }}
 
       - name: Discover previous demo context
         id: context
@@ -140,7 +141,7 @@ jobs:
             --label demo-reset \
             --body "Operator-approved reset. No runtime deployment.\n\n\`\`\`json\n${body}\n\`\`\`")"
           # Keep the reset PR branch as part of the demo's audit history.
-          gh pr merge "${reset_pr}" --merge --admin
+          gh pr merge "${reset_pr}" --merge
 
       - name: Preserve historic demo PRs and branches
         env:
