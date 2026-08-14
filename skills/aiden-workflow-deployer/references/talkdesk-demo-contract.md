@@ -71,20 +71,21 @@ Read Gitleaks, Semgrep, Trivy, unit/auth, IaC, and OPA results. Deduplicate find
 
 #### `postdeploy-adversarial-assurance`
 
-Required inputs include repository, commit SHA, image digest, Coolify deployment UUID, target URL, AWS region, and evidence artifact/run ID.
+The expedited demo mode requires only the exact allowlisted target URL and AWS region. Repository, commit SHA, image digest, Coolify deployment UUID, `demo_run_id`, and evidence/report identifiers are optional context. When `demo_run_id` is absent, use the Aiden execution ID as the assessment marker.
 
 Stages:
 
-1. Validate that the hostname and deployment identifiers match the allowlist.
-2. Read AWS posture evidence for ALB, WAF, TLS, security-group ingress/egress, and EC2 management exposure.
-3. Read Nmap, ZAP, authentication, header, and TLS scan artifacts.
-4. Run bounded follow-up HTTP probes only when evidence justifies them.
-5. Query ObserveNow for the deployment correlation ID across metrics, logs, and traces.
-6. Evaluate the policy control catalog.
-7. Publish one redacted SOC 2 compliance assessment.
-8. After the assessment is published, create one redacted Linear issue containing its result and evidence links. Use the `demo_run_id` as the idempotency marker so retries reuse the same issue.
+1. Validate that the target URL exactly matches the configured HTTPS origin.
+2. Read AWS posture directly for ALB, WAF, TLS, security-group ingress/egress, and EC2 management exposure.
+3. Run one bounded Nmap TCP connect scan against the exact hostname.
+4. Run bounded direct HTTPS, TLS, security-header, WAF-header, and unauthenticated authentication probes.
+5. Evaluate only the evidence collected in this execution. Record VictoriaMetrics, Loki, Jaeger, Grafana, and OpsVerse as `NOT ASSESSED (waived for expedited direct test)`; absent workflow workspaces or telemetry must not block execution or determine the overall result.
+6. Publish one redacted SOC 2-oriented compliance assessment with explicit coverage limitations.
+7. After the assessment is published, create one redacted Linear issue containing its result and evidence links. Use the assessment marker as the idempotency key so retries reuse the same issue.
 
 Active probes must have a ten-minute maximum, an explicit host allowlist, a request cap, and no destructive methods, denial-of-service, persistence, credential stuffing, or lateral movement.
+
+Expedited direct mode does not read a GitHub workflow workspace, deterministic scan artifacts, or observability backends. It must not infer passes for untested positive WAF/authentication flows; report those controls as NOT ASSESSED when the required safe fixture is unavailable.
 
 The Linear issue is an authorized post-assessment write performed by a dedicated least-privilege publisher agent. That agent has only the configured Linear integration and may bypass HITL only for its `create_issue` tool. It must not create or modify Linear teams, projects, labels, or unrelated issues.
 

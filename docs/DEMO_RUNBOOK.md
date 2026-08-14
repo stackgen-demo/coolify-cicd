@@ -77,9 +77,9 @@ The root creates these Automation webhook targets:
 
 - `security-control-bootstrap-talkdesk-demo`: called when an application PR opens;
 - `pr-security-review-talkdesk-demo`: called after deterministic PR jobs finish;
-- `postdeploy-adversarial-assurance-talkdesk-demo`: called after deployment evidence is collected.
+- `postdeploy-adversarial-assurance-talkdesk-demo`: called after deployment, or manually with only the exact target URL and AWS region for an expedited direct assessment.
 
-The post-deployment workflow publishes the SOC 2 assessment first, then creates one Linear issue through the existing `devops-linear` integration. The issue uses `demo_run_id` as its retry-safe marker and contains only redacted results and evidence links.
+The expedited post-deployment workflow reads AWS posture and directly probes the allowlisted deployment with bounded Nmap, HTTPS/TLS, WAF-header, security-header, and unauthenticated authentication checks. It does not require a GitHub workflow workspace or observability evidence; those signals are marked NOT ASSESSED instead of blocking. It publishes the SOC 2-oriented assessment first, then creates one Linear issue through the existing `devops-linear` integration. The issue uses `demo_run_id`, or the Aiden execution ID when it is absent, as its retry-safe marker and contains only redacted results and evidence links.
 
 The sensitive `webhook_payload_urls` output contains authenticated trigger URLs. Store them directly as GitHub secrets; do not print them.
 

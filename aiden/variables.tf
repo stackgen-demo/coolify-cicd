@@ -87,6 +87,17 @@ variable "aws_region" {
   default = "us-east-1"
 }
 
+variable "direct_pentest_target_url" {
+  description = "Exact HTTPS URL allowlisted for the expedited direct post-deployment assessment."
+  type        = string
+  default     = "https://talkdesk-coolify.demo.stackgen.com"
+
+  validation {
+    condition     = can(regex("^https://[A-Za-z0-9.-]+(?::[0-9]+)?/?$", var.direct_pentest_target_url))
+    error_message = "direct_pentest_target_url must be one exact HTTPS origin without a path, query, or fragment."
+  }
+}
+
 variable "webhook_allowed_cidrs" {
   description = "Optional ingress CIDRs for Aiden webhooks. Empty uses platform authentication only."
   type        = list(string)
