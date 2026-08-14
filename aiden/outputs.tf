@@ -1,6 +1,6 @@
 locals {
   webhook_base_url = trimspace(var.webhook_trigger_base_url) == "" ? var.stackgen_url : var.webhook_trigger_base_url
-  webhook_endpoint = "${trimsuffix(trimspace(local.webhook_base_url), "/")}/api/v1/webhooks/trigger"
+  webhook_endpoint = "${trimsuffix(trimspace(local.webhook_base_url), "/")}/guild/api/v1/webhooks/trigger"
 }
 
 output "agent_names" {
