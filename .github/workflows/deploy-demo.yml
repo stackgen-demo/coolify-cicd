@@ -11,7 +11,7 @@ on:
         type: string
 
 permissions:
-  actions: read
+  actions: write
   checks: read
   contents: read
   id-token: write
@@ -178,6 +178,26 @@ jobs:
             reports/generated/
           if-no-files-found: error
           retention-days: 30
+
+      - name: Record reset context for the next demo
+        if: always()
+        env:
+          GH_TOKEN: ${{ github.token }}
+          DEMO_RUN_ID: ${{ steps.identity.outputs.demo_run_id }}
+          DEPLOYMENT_UUID: ${{ steps.coolify.outputs.deployment_uuid }}
+          REPORT_LOCATION: ${{ steps.evidence.outputs.report_location }}
+          SOURCE_COMMIT_SHA: ${{ steps.identity.outputs.source_sha }}
+        run: |
+          set -euo pipefail
+          context="$(jq -cn \
+            --arg github_run_id "${GITHUB_RUN_ID}" \
+            --arg demo_run_id "${DEMO_RUN_ID}" \
+            --arg deployment_uuid "${DEPLOYMENT_UUID}" \
+            --arg image_digest "${DEMO_IMAGE_DIGEST}" \
+            --arg report_location "${REPORT_LOCATION}" \
+            --arg source_commit_sha "${SOURCE_COMMIT_SHA}" \
+            '{version:1,github_run_id:$github_run_id,demo_run_id:$demo_run_id,deployment_uuid:$deployment_uuid,image_digest:$image_digest,report_location:$report_location,source_commit_sha:$source_commit_sha}')"
+          gh variable set DEMO_LAST_RUN_CONTEXT --body "${context}" --repo "${GITHUB_REPOSITORY}"
 
       - name: Invoke Aiden post-deployment assurance
         if: always()
