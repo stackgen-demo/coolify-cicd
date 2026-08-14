@@ -4,7 +4,7 @@
     {
       "source": "demo/control-templates/security-gate.yml",
       "destination": ".github/workflows/security-gate.yml",
-      "sha256": "fc8ceef9d97d154928e3c247d910d529bb7e2bfce5f88ad3bbac9cad415d5ac2"
+      "sha256": "f2e37f3ce576090ed5792b640da9d578676c6f9e72dd5345ec3d5ff393f738b9"
     }
   ]
 }
