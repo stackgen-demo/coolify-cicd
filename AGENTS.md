@@ -25,7 +25,6 @@ Create these paths only when implementing the corresponding subsystem.
 
 ## Safety
 
-- Treat every credential pasted into chat as compromised and require rotation before deployment.
 - Never commit secrets, plaintext tfvars, Terraform plans/state, generated tokens, Coolify credentials, backend writer passwords, or agent tokens.
 - Read secrets from environment variables, AWS Secrets Manager, existing Guild secret IDs, GitHub Actions secrets, or the macOS Keychain entry documented in the skill.
 - Aiden deployments are additive by default. Stop if a plan deletes or replaces live resources or changes the workspace UUID.

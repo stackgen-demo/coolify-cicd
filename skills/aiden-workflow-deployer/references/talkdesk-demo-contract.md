@@ -149,8 +149,6 @@ Discover and verify UIDs again before apply. Provision dashboards and evaluating
 - ObserveNow backend writer and OpsVerse agent tokens: AWS Secrets Manager and Coolify runtime secrets only.
 - Coolify deploy token and Aiden webhook tokens: GitHub Actions secrets only.
 
-Any credential pasted into chat or logs must be rotated before deployment.
-
 ## Required Outputs
 
 Expose workflow and agent names, non-secret webhook endpoints, Grafana dashboard URLs, report bucket/prefix, scanned commit SHA, immutable image digest, and `demo_run_id`. Mark webhook tokens and credential-bearing URLs sensitive. The deployment report must confirm that the Terraform plan contained zero deletes.

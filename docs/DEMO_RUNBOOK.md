@@ -1,8 +1,8 @@
 # Demo deployment and operation runbook
 
-## 1. Rotate and separate credentials
+## 1. Configure and separate credentials
 
-Do not reuse any credential that appeared in chat. Rotate the OpsVerse agent token, ObserveNow writer password, Grafana administrator password, and any related backend credential before deployment.
+Store each deployment credential in its intended secret store and never commit it to the repository.
 
 Use separate credentials for separate duties:
 
@@ -29,7 +29,7 @@ Record the resulting full `REGISTRY/name@sha256:...` reference. Use that exact v
 
 ## 3. Provision AWS
 
-Create an ACM certificate for the application hostname and an AWS Secrets Manager secret containing only the rotated OpsVerse agent token. If the account already has the GitHub Actions OIDC provider, include its ARN and the repository `owner/name` in `infra/aws` variables.
+Create an ACM certificate for the application hostname and an AWS Secrets Manager secret containing only the OpsVerse agent token. If the account already has the GitHub Actions OIDC provider, include its ARN and the repository `owner/name` in `infra/aws` variables.
 
 ```bash
 cd infra/aws

@@ -329,7 +329,7 @@ resource "aws_instance" "coolify" {
   lifecycle {
     precondition {
       condition     = startswith(var.opsverse_agent_secret_arn, "arn:aws:secretsmanager:")
-      error_message = "opsverse_agent_secret_arn must reference an existing Secrets Manager secret containing a rotated token."
+      error_message = "opsverse_agent_secret_arn must reference an existing Secrets Manager secret containing the OpsVerse agent token."
     }
     precondition {
       condition     = startswith(var.coolify_api_secret_arn, "arn:aws:secretsmanager:")
