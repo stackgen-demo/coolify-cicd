@@ -27,9 +27,12 @@ python3 ../skills/aiden-workflow-deployer/scripts/discover_workspace.py \
 the selected workspace model and shared policies. It does not need their
 underlying credential values.
 
-Set the real GitHub `owner/repository` and the dedicated GitHub App bot login
-in an uncommitted tfvars file. Supply only the StackGen PAT through the
-environment:
+Set the real GitHub `owner/repository` and the GitHub identity used by the
+integration in an uncommitted tfvars file. `Demo Workspace` currently uses an
+OAuth-backed integration with `asarkar157`; a production deployment should
+replace it with a dedicated GitHub App and update the repository variable
+`SECURITY_CONTROL_BOT_LOGIN` at the same time. Supply only the StackGen PAT
+through the environment:
 
 ```bash
 export TF_VAR_stackgen_token="$STACKGEN_TOKEN"
