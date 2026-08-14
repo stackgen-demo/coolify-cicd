@@ -193,7 +193,7 @@ resource "sg_runbook_sop" "postdeploy" {
 resource "sg_workflow" "bootstrap" {
   name        = "security-control-bootstrap${var.name_suffix}"
   domain      = "security"
-  description = "Install missing deterministic PR security controls through one tightly constrained, automatically merged controls PR."
+  description = "Install missing deterministic PR security controls through one tightly constrained, automatically merged controls PR; when the control is already present, continue through required-check configuration, the audit comment, and the application-branch update."
   approve     = true
 
   required_inputs = ["repository_full_name", "pull_request_number", "head_sha"]
@@ -203,12 +203,12 @@ resource "sg_workflow" "bootstrap" {
   stages = [
     { stage_id = "validate-scope", description = "Validate repository, application PR, author, base branch, and captured head SHA.", required = true },
     { stage_id = "inventory-controls", description = "Inventory active workflows and required checks.", required = true },
-    { stage_id = "open-controls-pr", description = "Copy reviewed templates and open one security-controls PR.", required = true },
-    { stage_id = "validate-controls-pr", description = "Verify identity, base, prefix, paths, digests, file types, checks, and unchanged head SHA.", required = true },
-    { stage_id = "merge-controls-pr", description = "Auto-merge only the validated controls PR without submitting an approval.", required = true },
-    { stage_id = "configure-gate", description = "Create or verify the dedicated security-gate ruleset and record its ID.", required = true },
-    { stage_id = "comment-application-pr", description = "Comment on the original PR with an exact audit summary.", required = true },
-    { stage_id = "update-application-branch", description = "Update the original branch with expected_head_sha compare-and-swap.", required = true },
+    { stage_id = "open-controls-pr", description = "Copy reviewed templates and open one security-controls PR only when the control is absent. When it is already present, record the verified main commit and continue; do not end the workflow.", required = true },
+    { stage_id = "validate-controls-pr", description = "Verify identity, base, prefix, paths, digests, file types, checks, and unchanged head SHA only for a controls PR. With an existing main control, record this stage as safely not required and continue; do not end the workflow.", required = true },
+    { stage_id = "merge-controls-pr", description = "Auto-merge only the validated controls PR without submitting an approval. With an existing main control, record no merge required and continue to configure-gate; do not end the workflow.", required = true },
+    { stage_id = "configure-gate", description = "Create or verify the dedicated security-gate ruleset and record its ID. This stage is required whether controls were newly installed or already present.", required = true },
+    { stage_id = "comment-application-pr", description = "Comment on the original PR with an exact audit summary using gh pr comment --body-file, never --body @path. This stage is required whether controls were newly installed or already present.", required = true },
+    { stage_id = "update-application-branch", description = "Update the original branch with expected_head_sha compare-and-swap. This stage is required whether controls were newly installed or already present.", required = true },
     { stage_id = "verify-security-run", description = "Verify a new SHA and started Security gate workflow.", required = true },
   ]
 
