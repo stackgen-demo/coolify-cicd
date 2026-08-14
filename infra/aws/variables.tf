@@ -114,6 +114,16 @@ variable "coolify_installer_sha256" {
   }
 }
 
+variable "awscli_installer_sha256" {
+  description = "Reviewed SHA-256 of the AWS CLI v2 Linux installer downloaded by EC2 bootstrap."
+  type        = string
+
+  validation {
+    condition     = can(regex("^[0-9a-f]{64}$", var.awscli_installer_sha256))
+    error_message = "awscli_installer_sha256 must be a lowercase SHA-256 digest."
+  }
+}
+
 variable "opsverse_installer_sha256" {
   description = "Reviewed SHA-256 of the OpsVerse installer downloaded by EC2 bootstrap."
   type        = string
