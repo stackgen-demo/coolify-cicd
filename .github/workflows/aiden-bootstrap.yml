@@ -2,7 +2,7 @@ name: Aiden security-control bootstrap
 
 on:
   pull_request_target:
-    types: [opened]
+    types: [opened, reopened]
 
 permissions:
   contents: read
