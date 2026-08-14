@@ -98,6 +98,36 @@ variable "direct_pentest_target_url" {
   }
 }
 
+variable "direct_pentest_alb_arn" {
+  description = "Exact demo ALB ARN allowlisted for direct AWS posture reads."
+  type        = string
+  default     = "arn:aws:elasticloadbalancing:us-east-1:180217099948:loadbalancer/app/talkdesk-coolify-demo/3f4b3a514b72ef3a"
+}
+
+variable "direct_pentest_alb_security_group_id" {
+  description = "Exact demo ALB security group allowlisted for direct ingress and egress reads."
+  type        = string
+  default     = "sg-00e3a0823d9d6f8ca"
+}
+
+variable "direct_pentest_ec2_security_group_id" {
+  description = "Exact demo EC2 security group allowlisted for direct ingress and egress reads."
+  type        = string
+  default     = "sg-093fe8005fedfdb46"
+}
+
+variable "direct_pentest_waf_header_name" {
+  description = "Non-secret demo header name required by WAF on /api paths."
+  type        = string
+  default     = "x-demo-client"
+}
+
+variable "direct_pentest_waf_header_value" {
+  description = "Non-secret demo header value accepted by WAF on /api paths."
+  type        = string
+  default     = "talkdesk-security-demo"
+}
+
 variable "webhook_allowed_cidrs" {
   description = "Optional ingress CIDRs for Aiden webhooks. Empty uses platform authentication only."
   type        = list(string)

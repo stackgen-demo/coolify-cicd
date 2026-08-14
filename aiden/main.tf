@@ -280,9 +280,16 @@ resource "sg_runbook_sop" "pr_review" {
 }
 
 resource "sg_runbook_sop" "postdeploy" {
-  name        = "postdeploy-adversarial-assurance${var.name_suffix}"
-  approve     = true
-  description = file("${path.module}/runbooks/postdeploy-adversarial-assurance.md")
+  name    = "postdeploy-adversarial-assurance${var.name_suffix}"
+  approve = true
+  description = templatefile("${path.module}/runbooks/postdeploy-adversarial-assurance.md.tftpl", {
+    target_url            = trimsuffix(var.direct_pentest_target_url, "/")
+    alb_arn               = var.direct_pentest_alb_arn
+    alb_security_group_id = var.direct_pentest_alb_security_group_id
+    ec2_security_group_id = var.direct_pentest_ec2_security_group_id
+    waf_header_name       = var.direct_pentest_waf_header_name
+    waf_header_value      = var.direct_pentest_waf_header_value
+  })
 }
 
 resource "sg_workflow" "bootstrap" {
