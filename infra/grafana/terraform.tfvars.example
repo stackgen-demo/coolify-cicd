@@ -1,0 +1,7 @@
+grafana_url               = "https://opsverse-demo-us.us-east4.gcp.opsverse.cloud"
+metrics_datasource_uid    = "metrics"
+logs_datasource_uid       = "loki"
+jaeger_datasource_uid     = "jaeger"
+cloudwatch_datasource_uid = "afimxw4vghbeoc"
+
+# Set grafana_auth with TF_VAR_grafana_auth from a dedicated service-account token.

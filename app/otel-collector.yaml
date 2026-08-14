@@ -1,0 +1,66 @@
+extensions:
+  basicauth/metrics:
+    client_auth:
+      username: ${env:OBSERVENOW_USERNAME}
+      password: ${env:OBSERVENOW_PASSWORD}
+  basicauth/logs:
+    client_auth:
+      username: ${env:OBSERVENOW_USERNAME}
+      password: ${env:OBSERVENOW_PASSWORD}
+  basicauth/traces:
+    client_auth:
+      username: ${env:OBSERVENOW_USERNAME}
+      password: ${env:OBSERVENOW_PASSWORD}
+  health_check:
+    endpoint: 0.0.0.0:13133
+
+receivers:
+  otlp:
+    protocols:
+      grpc:
+        endpoint: 0.0.0.0:4317
+      http:
+        endpoint: 0.0.0.0:4318
+
+processors:
+  batch:
+    send_batch_size: 1024
+    timeout: 5s
+  memory_limiter:
+    check_interval: 1s
+    limit_mib: 256
+  resource:
+    attributes:
+      - key: deployment.environment.name
+        value: ${env:DEPLOYMENT_ENVIRONMENT}
+        action: upsert
+
+exporters:
+  prometheusremotewrite:
+    endpoint: ${env:VICTORIA_METRICS_URL}
+    auth:
+      authenticator: basicauth/metrics
+  otlphttp/loki:
+    endpoint: ${env:LOKI_URL}/otlp
+    auth:
+      authenticator: basicauth/logs
+  zipkin:
+    endpoint: ${env:JAEGER_ZIPKIN_URL}
+    auth:
+      authenticator: basicauth/traces
+
+service:
+  extensions: [basicauth/metrics, basicauth/logs, basicauth/traces, health_check]
+  pipelines:
+    logs:
+      receivers: [otlp]
+      processors: [memory_limiter, resource, batch]
+      exporters: [otlphttp/loki]
+    metrics:
+      receivers: [otlp]
+      processors: [memory_limiter, resource, batch]
+      exporters: [prometheusremotewrite]
+    traces:
+      receivers: [otlp]
+      processors: [memory_limiter, resource, batch]
+      exporters: [zipkin]

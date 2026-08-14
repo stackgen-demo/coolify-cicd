@@ -1,0 +1,4 @@
+interface:
+  display_name: "Aiden Workflow Deployer"
+  short_description: "Deploy and maintain guarded Aiden workflows"
+  default_prompt: "Use $aiden-workflow-deployer to configure and safely deploy an Aiden workflow for this repository."

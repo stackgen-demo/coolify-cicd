@@ -1,0 +1,10 @@
+{
+  "version": 1,
+  "controls": [
+    {
+      "source": "demo/control-templates/security-gate.yml",
+      "destination": ".github/workflows/security-gate.yml",
+      "sha256": "fc8ceef9d97d154928e3c247d910d529bb7e2bfce5f88ad3bbac9cad415d5ac2"
+    }
+  ]
+}

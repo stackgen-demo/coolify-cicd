@@ -1,0 +1,76 @@
+{
+  "annotations": {"list": []},
+  "editable": true,
+  "fiscalYearStartMonth": 0,
+  "graphTooltip": 1,
+  "links": [],
+  "panels": [
+    {
+      "datasource": {"type": "prometheus", "uid": "${metrics_uid}"},
+      "fieldConfig": {"defaults": {"unit": "reqps"}, "overrides": []},
+      "gridPos": {"h": 8, "w": 12, "x": 0, "y": 0},
+      "id": 1,
+      "options": {"legend": {"displayMode": "table", "placement": "bottom"}},
+      "targets": [{"editorMode": "code", "expr": "sum by (http_response_status_code) (rate(talkdesk_demo_http_requests_total{demo_run_id=\"$demo_run_id\"}[5m]))", "legendFormat": "HTTP {{http_response_status_code}}", "refId": "A"}],
+      "title": "Request rate by status",
+      "type": "timeseries"
+    },
+    {
+      "datasource": {"type": "prometheus", "uid": "${metrics_uid}"},
+      "fieldConfig": {"defaults": {"unit": "ms"}, "overrides": []},
+      "gridPos": {"h": 8, "w": 12, "x": 12, "y": 0},
+      "id": 2,
+      "targets": [{"editorMode": "code", "expr": "histogram_quantile(0.95, sum by (le) (rate(talkdesk_demo_http_request_duration_bucket{demo_run_id=\"$demo_run_id\"}[5m])))", "legendFormat": "p95", "refId": "A"}],
+      "title": "HTTP p95 latency",
+      "type": "timeseries"
+    },
+    {
+      "datasource": {"type": "loki", "uid": "${loki_uid}"},
+      "gridPos": {"h": 10, "w": 16, "x": 0, "y": 8},
+      "id": 3,
+      "options": {"dedupStrategy": "none", "enableLogDetails": true, "showLabels": false, "showTime": true, "sortOrder": "Descending"},
+      "targets": [{"expr": "{service_name=\"talkdesk-coolify-demo\"} |= \"$demo_run_id\"", "refId": "A"}],
+      "title": "Application logs",
+      "type": "logs"
+    },
+    {
+      "datasource": {"type": "jaeger", "uid": "${jaeger_uid}"},
+      "gridPos": {"h": 10, "w": 8, "x": 16, "y": 8},
+      "id": 4,
+      "targets": [{"queryType": "search", "refId": "A", "service": "talkdesk-coolify-demo", "tags": {"demo.run_id": "$demo_run_id"}}],
+      "title": "Deployment traces",
+      "type": "traces"
+    },
+    {
+      "datasource": {"type": "prometheus", "uid": "${metrics_uid}"},
+      "fieldConfig": {"defaults": {"mappings": [], "thresholds": {"mode": "absolute", "steps": [{"color": "red", "value": null}, {"color": "green", "value": 1}]}}, "overrides": []},
+      "gridPos": {"h": 6, "w": 8, "x": 0, "y": 18},
+      "id": 5,
+      "options": {"colorMode": "background", "graphMode": "area", "justifyMode": "auto", "reduceOptions": {"calcs": ["lastNotNull"], "fields": "", "values": false}, "textMode": "auto"},
+      "targets": [{"editorMode": "code", "expr": ${opsverse_query_json}, "refId": "A"}],
+      "title": "OpsVerse host agent health",
+      "type": "stat"
+    },
+    {
+      "datasource": {"type": "cloudwatch", "uid": "${cloudwatch_uid}"},
+      "gridPos": {"h": 6, "w": 16, "x": 8, "y": 18},
+      "id": 6,
+      "targets": [{"dimensions": {}, "metricName": "BlockedRequests", "namespace": "AWS/WAFV2", "refId": "A", "region": "default", "statistic": "Sum"}],
+      "title": "AWS WAF blocked requests",
+      "type": "timeseries"
+    }
+  ],
+  "refresh": "15s",
+  "schemaVersion": 41,
+  "tags": ["talkdesk", "coolify", "aiden", "security-demo"],
+  "templating": {
+    "list": [
+      {"current": {"text": "unassigned", "value": "unassigned"}, "hide": 0, "label": "Demo run ID", "name": "demo_run_id", "options": [], "query": "unassigned", "skipUrlSync": false, "type": "textbox"}
+    ]
+  },
+  "time": {"from": "now-30m", "to": "now"},
+  "timezone": "browser",
+  "title": "Talkdesk Secure Delivery Demo",
+  "uid": "talkdesk-secure-delivery",
+  "version": 1
+}

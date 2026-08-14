@@ -1,0 +1,44 @@
+name: Validate security controls
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened]
+    paths:
+      - .github/workflows/security-gate.yml
+
+permissions:
+  contents: read
+
+jobs:
+  validate-controls:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          fetch-depth: 0
+
+      - name: Enforce the reviewed control manifest
+        env:
+          AUTHORIZED_BOT: ${{ vars.SECURITY_CONTROL_BOT_LOGIN }}
+          BASE_REF: ${{ github.base_ref }}
+          HEAD_AUTHOR: ${{ github.event.pull_request.user.login }}
+          HEAD_REF: ${{ github.head_ref }}
+        run: |
+          set -euo pipefail
+          test -n "${AUTHORIZED_BOT}"
+          test "${HEAD_AUTHOR}" = "${AUTHORIZED_BOT}"
+          [[ "${HEAD_REF}" =~ ^security-controls/[A-Za-z0-9._-]+$ ]]
+
+          mapfile -t changed < <(git diff --name-only "origin/${BASE_REF}...HEAD")
+          test "${#changed[@]}" -eq 1
+          test "${changed[0]}" = ".github/workflows/security-gate.yml"
+
+          expected="$(jq -er '.controls[] | select(.destination == ".github/workflows/security-gate.yml") | .sha256' demo/control-templates/manifest.json)"
+          source_digest="$(sha256sum demo/control-templates/security-gate.yml | awk '{print $1}')"
+          destination_digest="$(sha256sum .github/workflows/security-gate.yml | awk '{print $1}')"
+          test "${expected}" = "${source_digest}"
+          test "${expected}" = "${destination_digest}"
+
+          test -f .github/workflows/security-gate.yml
+          test ! -L .github/workflows/security-gate.yml
+          git diff --check "origin/${BASE_REF}...HEAD"

@@ -1,0 +1,218 @@
+name: Deploy immutable demo artifact
+
+on:
+  pull_request_target:
+    types: [closed]
+  workflow_dispatch:
+    inputs:
+      source_commit_sha:
+        description: Scanned repository commit SHA
+        required: true
+        type: string
+
+permissions:
+  actions: read
+  checks: read
+  contents: read
+  id-token: write
+
+concurrency:
+  group: talkdesk-demo-deployment
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    if: >-
+      github.event_name == 'workflow_dispatch' ||
+      (github.event.pull_request.merged == true &&
+       contains(github.event.pull_request.labels.*.name, 'demo-application') &&
+       !contains(github.event.pull_request.labels.*.name, 'demo-reset') &&
+       vars.DEMO_STATE != 'resetting')
+    runs-on: ubuntu-24.04
+    environment: demo-deploy
+    env:
+      AWS_REGION: ${{ vars.AWS_REGION }}
+      COOLIFY_BASE_URL: ${{ vars.COOLIFY_BASE_URL }}
+      COOLIFY_DEPLOY_WEBHOOK: ${{ secrets.COOLIFY_DEPLOY_WEBHOOK }}
+      COOLIFY_TOKEN: ${{ secrets.COOLIFY_TOKEN }}
+      DEMO_IMAGE_DIGEST: ${{ vars.DEMO_IMAGE_DIGEST }}
+      EVIDENCE_BUCKET: ${{ vars.EVIDENCE_BUCKET }}
+      TARGET_URL: ${{ vars.DEMO_TARGET_URL }}
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+
+      - name: Establish deployment identity
+        id: identity
+        env:
+          DISPATCH_SHA: ${{ inputs.source_commit_sha }}
+          PR_HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+        run: |
+          set -euo pipefail
+          demo_run_id="$(cat /proc/sys/kernel/random/uuid)"
+          source_sha="${DISPATCH_SHA:-${PR_HEAD_SHA}}"
+          test -n "${source_sha}"
+          test -n "${DEMO_IMAGE_DIGEST}"
+          echo "demo_run_id=${demo_run_id}" >> "${GITHUB_OUTPUT}"
+          echo "source_sha=${source_sha}" >> "${GITHUB_OUTPUT}"
+
+      - name: Require a successful deterministic security gate for the source SHA
+        env:
+          GH_TOKEN: ${{ github.token }}
+          SOURCE_SHA: ${{ steps.identity.outputs.source_sha }}
+        run: |
+          set -euo pipefail
+          conclusion="$(gh api \
+            --header 'X-GitHub-Api-Version: 2022-11-28' \
+            "repos/${GITHUB_REPOSITORY}/commits/${SOURCE_SHA}/check-runs" \
+            --jq '[.check_runs[] | select(.name == "security-gate")] | sort_by(.completed_at) | last | .conclusion')"
+          test "${conclusion}" = "success"
+
+      - name: Trigger Coolify redeployment
+        id: coolify
+        env:
+          DEMO_RUN_ID: ${{ steps.identity.outputs.demo_run_id }}
+        run: |
+          set -euo pipefail
+          test -n "${COOLIFY_DEPLOY_WEBHOOK}"
+          test -n "${COOLIFY_TOKEN}"
+          response="$(curl --fail-with-body --silent --show-error \
+            --request GET \
+            --header "Authorization: Bearer ${COOLIFY_TOKEN}" \
+            --header "X-Demo-Run-Id: ${DEMO_RUN_ID}" \
+            "${COOLIFY_DEPLOY_WEBHOOK}")"
+          deployment_uuid="$(jq -er '.deployments[0].deployment_uuid // .deployment_uuid' <<<"${response}")"
+          echo "deployment_uuid=${deployment_uuid}" >> "${GITHUB_OUTPUT}"
+
+      - name: Watch Coolify deployment
+        env:
+          DEPLOYMENT_UUID: ${{ steps.coolify.outputs.deployment_uuid }}
+        run: scripts/postdeploy/wait-for-coolify.sh
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@7474bc4690e29a8392af63c5b98e7449536d5c3a # v4
+        with:
+          role-to-assume: ${{ vars.POSTDEPLOY_AWS_ROLE_ARN }}
+          aws-region: ${{ vars.AWS_REGION }}
+
+      - name: Install bounded scanner dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install --yes nmap
+          npm ci --prefix app
+
+      - name: Collect network and AWS posture evidence
+        env:
+          ALB_ARN: ${{ vars.ALB_ARN }}
+          ALB_SECURITY_GROUP_ID: ${{ vars.ALB_SECURITY_GROUP_ID }}
+          ALLOWED_HOST: ${{ vars.DEMO_ALLOWED_HOST }}
+          DEMO_RUN_ID: ${{ steps.identity.outputs.demo_run_id }}
+          EC2_SECURITY_GROUP_ID: ${{ vars.EC2_SECURITY_GROUP_ID }}
+          WAF_HEADER_NAME: ${{ vars.WAF_HEADER_NAME }}
+          WAF_HEADER_VALUE: ${{ vars.WAF_HEADER_VALUE }}
+        run: scripts/postdeploy/collect-evidence.sh
+
+      - name: Run authentication compliance probes
+        env:
+          AUTH_AUDIENCE: ${{ vars.AUTH_AUDIENCE }}
+          AUTH_HS256_SECRET: ${{ secrets.AUTH_HS256_SECRET }}
+          AUTH_ISSUER: ${{ vars.AUTH_ISSUER }}
+          DEMO_RUN_ID: ${{ steps.identity.outputs.demo_run_id }}
+          WAF_HEADER_NAME: ${{ vars.WAF_HEADER_NAME }}
+          WAF_HEADER_VALUE: ${{ vars.WAF_HEADER_VALUE }}
+        run: node app/scripts/auth-probes.mjs
+
+      - name: Verify deployment correlation across the open observability stack
+        env:
+          DEMO_RUN_ID: ${{ steps.identity.outputs.demo_run_id }}
+          GRAFANA_READER_TOKEN: ${{ secrets.GRAFANA_READER_TOKEN }}
+          GRAFANA_URL: ${{ vars.GRAFANA_URL }}
+          JAEGER_DATASOURCE_UID: ${{ vars.JAEGER_DATASOURCE_UID }}
+          LOKI_URL: ${{ vars.LOKI_URL }}
+          OBSERVENOW_PASSWORD: ${{ secrets.OBSERVENOW_PASSWORD }}
+          OBSERVENOW_USERNAME: ${{ secrets.OBSERVENOW_USERNAME }}
+          OPSVERSE_METRIC_QUERY: ${{ vars.OPSVERSE_METRIC_QUERY }}
+          VICTORIA_METRICS_QUERY_URL: ${{ vars.VICTORIA_METRICS_QUERY_URL }}
+        run: scripts/postdeploy/check-observability.sh
+
+      - name: Run bounded ZAP baseline scan
+        env:
+          DEMO_RUN_ID: ${{ steps.identity.outputs.demo_run_id }}
+        run: |
+          set -euo pipefail
+          mkdir -p evidence/zap
+          docker run --rm \
+            --volume "${PWD}/evidence/zap:/zap/wrk:rw" \
+            ghcr.io/zaproxy/zaproxy@sha256:781a2bdaea47324e7bab583e2263f21d257b0aee61ed51521a5be45f5f5081ef \
+            zap-baseline.py -t "${TARGET_URL}" -m 5 -J zap.json -r zap.html -I
+
+      - name: Evaluate compliance policy and render report
+        env:
+          ALB_SECURITY_GROUP_ID: ${{ vars.ALB_SECURITY_GROUP_ID }}
+          DEMO_RUN_ID: ${{ steps.identity.outputs.demo_run_id }}
+          DEPLOYMENT_UUID: ${{ steps.coolify.outputs.deployment_uuid }}
+          EC2_SECURITY_GROUP_ID: ${{ vars.EC2_SECURITY_GROUP_ID }}
+          SOURCE_COMMIT_SHA: ${{ steps.identity.outputs.source_sha }}
+        run: |
+          set -euo pipefail
+          node scripts/postdeploy/normalize-evidence.mjs
+          docker run --rm --volume "${PWD}:/workspace" --workdir /workspace \
+            openpolicyagent/opa@sha256:57f7d06808fff6de3ea1d698e6430990973ca1370be0e54975f0083d615521da \
+            eval --format=json --data policies/postdeploy.rego --input evidence/postdeploy.json \
+            'data.talkdesk.postdeploy.decision' > evidence/policy-decision.json
+          node scripts/postdeploy/render-report.mjs
+          jq -e '.result[0].expressions[0].value.allow == true' evidence/policy-decision.json
+
+      - name: Publish immutable evidence and report copies
+        if: always()
+        id: evidence
+        env:
+          DEMO_RUN_ID: ${{ steps.identity.outputs.demo_run_id }}
+        run: |
+          set -euo pipefail
+          test -n "${EVIDENCE_BUCKET}"
+          prefix="s3://${EVIDENCE_BUCKET}/runs/${DEMO_RUN_ID}"
+          while IFS= read -r -d '' evidence_file; do
+            relative="${evidence_file#evidence/}"
+            aws s3 cp "${evidence_file}" "${prefix}/evidence/${relative}" --sse AES256 --only-show-errors
+          done < <(find evidence -type f -print0)
+          while IFS= read -r -d '' report_file; do
+            relative="${report_file#reports/generated/}"
+            aws s3 cp "${report_file}" "${prefix}/reports/${relative}" --sse AES256 --only-show-errors
+          done < <(find reports/generated -type f -print0)
+          echo "report_location=${prefix}/reports/${DEMO_RUN_ID}.md" >> "${GITHUB_OUTPUT}"
+
+      - name: Upload evidence bundle
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: postdeploy-${{ steps.identity.outputs.demo_run_id }}
+          path: |
+            evidence/
+            reports/generated/
+          if-no-files-found: error
+          retention-days: 30
+
+      - name: Invoke Aiden post-deployment assurance
+        if: always()
+        env:
+          AIDEN_WEBHOOK_URL: ${{ secrets.AIDEN_POSTDEPLOY_WEBHOOK_URL }}
+          DEMO_RUN_ID: ${{ steps.identity.outputs.demo_run_id }}
+          DEPLOYMENT_UUID: ${{ steps.coolify.outputs.deployment_uuid }}
+          SOURCE_COMMIT_SHA: ${{ steps.identity.outputs.source_sha }}
+          REPORT_LOCATION: ${{ steps.evidence.outputs.report_location }}
+        run: |
+          set -euo pipefail
+          test -n "${AIDEN_WEBHOOK_URL}"
+          payload="$(jq -cn \
+            --arg repository_full_name "${GITHUB_REPOSITORY}" \
+            --arg commit_sha "${SOURCE_COMMIT_SHA}" \
+            --arg image_digest "${DEMO_IMAGE_DIGEST}" \
+            --arg coolify_deployment_uuid "${DEPLOYMENT_UUID}" \
+            --arg target_url "${TARGET_URL}" \
+            --arg aws_region "${AWS_REGION}" \
+            --arg demo_run_id "${DEMO_RUN_ID}" \
+            --arg report_location "${REPORT_LOCATION}" \
+            --argjson evidence_run_id "${GITHUB_RUN_ID}" \
+            '{repository_full_name:$repository_full_name,commit_sha:$commit_sha,image_digest:$image_digest,coolify_deployment_uuid:$coolify_deployment_uuid,target_url:$target_url,aws_region:$aws_region,demo_run_id:$demo_run_id,evidence_run_id:$evidence_run_id,report_location:$report_location}')"
+          curl --fail-with-body --silent --show-error --retry 3 --retry-all-errors \
+            --header 'content-type: application/json' --data "${payload}" "${AIDEN_WEBHOOK_URL}" >/dev/null

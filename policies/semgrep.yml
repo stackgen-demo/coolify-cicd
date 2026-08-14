@@ -1,0 +1,20 @@
+rules:
+  - id: node-child-process-shell
+    message: Shell execution from application code requires explicit review.
+    severity: ERROR
+    languages: [typescript, javascript]
+    patterns:
+      - pattern-either:
+          - pattern: child_process.exec(...)
+          - pattern: child_process.execSync(...)
+  - id: express-unsafe-html-input
+    message: Do not render request-controlled input directly into HTML.
+    severity: ERROR
+    languages: [typescript, javascript]
+    pattern: $RES.send(... + $REQ.$FIELD + ...)
+  - id: weak-jwt-verification
+    message: JWT verification must specify algorithms, issuer, and audience.
+    severity: ERROR
+    languages: [typescript, javascript]
+    patterns:
+      - pattern: jwtVerify($TOKEN, $KEY)

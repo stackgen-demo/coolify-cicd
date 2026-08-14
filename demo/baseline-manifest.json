@@ -1,0 +1,6 @@
+{
+  "version": 1,
+  "security_control_paths_absent": [
+    ".github/workflows/security-gate.yml"
+  ]
+}

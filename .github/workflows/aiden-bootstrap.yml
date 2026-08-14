@@ -1,0 +1,37 @@
+name: Aiden security-control bootstrap
+
+on:
+  pull_request_target:
+    types: [opened]
+
+permissions:
+  contents: read
+
+jobs:
+  trigger:
+    if: >-
+      github.event.pull_request.head.repo.full_name == github.repository &&
+      !startsWith(github.event.pull_request.head.ref, 'security-controls/') &&
+      !contains(github.event.pull_request.labels.*.name, 'demo-reset') &&
+      vars.DEMO_STATE != 'resetting'
+    runs-on: ubuntu-24.04
+    steps:
+      - name: Invoke allowlisted Aiden bootstrap workflow
+        env:
+          AIDEN_WEBHOOK_URL: ${{ secrets.AIDEN_BOOTSTRAP_WEBHOOK_URL }}
+          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+          REPOSITORY: ${{ github.repository }}
+        run: |
+          set -euo pipefail
+          test -n "${AIDEN_WEBHOOK_URL}"
+          payload="$(jq -cn \
+            --arg repository_full_name "${REPOSITORY}" \
+            --argjson pull_request_number "${PR_NUMBER}" \
+            --arg head_sha "${HEAD_SHA}" \
+            '{repository_full_name:$repository_full_name,pull_request_number:$pull_request_number,head_sha:$head_sha}')"
+          curl --fail-with-body --silent --show-error \
+            --retry 3 --retry-all-errors \
+            --header 'content-type: application/json' \
+            --data "${payload}" \
+            "${AIDEN_WEBHOOK_URL}" >/dev/null

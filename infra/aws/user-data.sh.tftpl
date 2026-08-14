@@ -1,0 +1,38 @@
+#!/usr/bin/env bash
+set -euo pipefail
+exec > >(tee -a /var/log/talkdesk-demo-bootstrap.log) 2>&1
+
+export AWS_DEFAULT_REGION="${aws_region}"
+export DEBIAN_FRONTEND=noninteractive
+
+sed -i 's|http://|https://|g' /etc/apt/sources.list 2>/dev/null || true
+sed -i 's|http://|https://|g' /etc/apt/sources.list.d/ubuntu.sources 2>/dev/null || true
+apt-get update
+apt-get install --yes awscli ca-certificates curl jq unzip
+
+curl --fail --silent --show-error --location \
+  https://cdn.coollabs.io/coolify/install.sh \
+  --output /tmp/coolify-install.sh
+echo "${coolify_sha256}  /tmp/coolify-install.sh" | sha256sum --check --strict
+chmod 0700 /tmp/coolify-install.sh
+/tmp/coolify-install.sh
+
+opsverse_token="$(aws secretsmanager get-secret-value \
+  --secret-id "${opsverse_secret_arn}" \
+  --query SecretString \
+  --output text)"
+
+curl --fail --silent --show-error --location \
+  https://opsverse-public.s3.amazonaws.com/agent/single-node/installer.sh \
+  --output /tmp/opsverse-installer.sh
+echo "${opsverse_sha256}  /tmp/opsverse-installer.sh" | sha256sum --check --strict
+chmod 0700 /tmp/opsverse-installer.sh
+/tmp/opsverse-installer.sh -- \
+  -m "${metrics_host}" \
+  -l "${logs_host}" \
+  -t "${traces_collector_host}" \
+  -p "$${opsverse_token}"
+unset opsverse_token
+
+systemctl enable --now amazon-ssm-agent || true
+systemctl status opsverse-agent --no-pager

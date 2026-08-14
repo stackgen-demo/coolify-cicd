@@ -1,0 +1,145 @@
+name: Reset Talkdesk demo
+
+on:
+  workflow_dispatch:
+    inputs:
+      application_merge_sha:
+        description: Merge commit for the application PR
+        required: true
+        type: string
+      controls_merge_sha:
+        description: Merge commit for the security-controls PR
+        required: true
+        type: string
+      application_pr:
+        description: Application PR number
+        required: true
+        type: number
+      controls_pr:
+        description: Security-controls PR number
+        required: true
+        type: number
+      controls_branch:
+        description: Exact security-controls branch to delete
+        required: true
+        type: string
+      completed_run_id:
+        description: Completed demo run ID to preserve in the reset audit trail
+        required: true
+        type: string
+      deployment_uuid:
+        description: Coolify deployment UUID from the completed run
+        required: true
+        type: string
+      image_digest:
+        description: Immutable image digest used by the completed run
+        required: true
+        type: string
+      report_location:
+        description: Artifact URL or evidence report location
+        required: true
+        type: string
+
+permissions:
+  contents: write
+  pull-requests: write
+
+concurrency:
+  group: talkdesk-demo-reset
+  cancel-in-progress: false
+
+jobs:
+  reset:
+    runs-on: ubuntu-24.04
+    environment: demo-reset
+    env:
+      GH_TOKEN: ${{ secrets.RESET_GITHUB_TOKEN }}
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          fetch-depth: 0
+          token: ${{ secrets.RESET_GITHUB_TOKEN }}
+
+      - name: Validate reset inputs
+        env:
+          CONTROLS_BRANCH: ${{ inputs.controls_branch }}
+        run: |
+          set -euo pipefail
+          [[ "${CONTROLS_BRANCH}" =~ ^security-controls/[a-zA-Z0-9._-]+$ ]]
+          git cat-file -e "${{ inputs.application_merge_sha }}^{commit}"
+          git cat-file -e "${{ inputs.controls_merge_sha }}^{commit}"
+
+      - name: Pause demo automations
+        run: gh variable set DEMO_STATE --body resetting --repo "${GITHUB_REPOSITORY}"
+
+      - name: Remove dedicated demo security ruleset
+        env:
+          RULESET_ID: ${{ vars.DEMO_SECURITY_RULESET_ID }}
+        run: |
+          set -euo pipefail
+          if [[ -n "${RULESET_ID}" ]]; then
+            gh api --method DELETE "repos/${GITHUB_REPOSITORY}/rulesets/${RULESET_ID}"
+          fi
+
+      - name: Create audited reset branch
+        id: branch
+        run: |
+          set -euo pipefail
+          reset_branch="demo-reset/${GITHUB_RUN_ID}"
+          git config user.name "talkdesk-demo-reset[bot]"
+          git config user.email "talkdesk-demo-reset[bot]@users.noreply.github.com"
+          git switch -c "${reset_branch}"
+          revert_recorded_change() {
+            local commit_sha="$1"
+            local parent_count
+            parent_count="$(git rev-list --parents -n 1 "${commit_sha}" | awk '{print NF - 1}')"
+            if (( parent_count > 1 )); then
+              git revert --no-edit -m 1 "${commit_sha}"
+            else
+              git revert --no-edit "${commit_sha}"
+            fi
+          }
+          revert_recorded_change "${{ inputs.application_merge_sha }}"
+          revert_recorded_change "${{ inputs.controls_merge_sha }}"
+          node scripts/reset/verify-baseline.mjs
+          git push origin "${reset_branch}"
+          echo "name=${reset_branch}" >> "${GITHUB_OUTPUT}"
+
+      - name: Open and merge reset PR
+        env:
+          RESET_BRANCH: ${{ steps.branch.outputs.name }}
+        run: |
+          set -euo pipefail
+          gh label create demo-reset --color B60205 --description "Operator-approved demo reset" \
+            --repo "${GITHUB_REPOSITORY}" 2>/dev/null || true
+          body="$(jq -n \
+            --arg completed_run_id '${{ inputs.completed_run_id }}' \
+            --arg application_pr '${{ inputs.application_pr }}' \
+            --arg controls_pr '${{ inputs.controls_pr }}' \
+            --arg application_merge_sha '${{ inputs.application_merge_sha }}' \
+            --arg controls_merge_sha '${{ inputs.controls_merge_sha }}' \
+            --arg deployment_uuid '${{ inputs.deployment_uuid }}' \
+            --arg image_digest '${{ inputs.image_digest }}' \
+            --arg report_location '${{ inputs.report_location }}' \
+            '{completed_run_id:$completed_run_id,application_pr:$application_pr,controls_pr:$controls_pr,application_merge_sha:$application_merge_sha,controls_merge_sha:$controls_merge_sha,deployment_uuid:$deployment_uuid,image_digest:$image_digest,report_location:$report_location}')"
+          reset_pr="$(gh pr create --base "${GITHUB_REF_NAME}" --head "${RESET_BRANCH}" \
+            --title "Reset Talkdesk demo after run ${GITHUB_RUN_ID}" \
+            --label demo-reset \
+            --body "Operator-approved reset. No runtime deployment.\n\n\`\`\`json\n${body}\n\`\`\`")"
+          gh pr merge "${reset_pr}" --merge --admin --delete-branch
+
+      - name: Close recorded PRs and remove exact controls branch
+        env:
+          CONTROLS_BRANCH: ${{ inputs.controls_branch }}
+        run: |
+          set -euo pipefail
+          gh pr close "${{ inputs.application_pr }}" --repo "${GITHUB_REPOSITORY}" 2>/dev/null || true
+          gh pr close "${{ inputs.controls_pr }}" --repo "${GITHUB_REPOSITORY}" 2>/dev/null || true
+          gh api --method DELETE "repos/${GITHUB_REPOSITORY}/git/refs/heads/${CONTROLS_BRANCH}" 2>/dev/null || true
+
+      - name: Restore ready state
+        if: success()
+        run: |
+          new_run_id="$(cat /proc/sys/kernel/random/uuid)"
+          gh variable set DEMO_RUN_ID --body "${new_run_id}" --repo "${GITHUB_REPOSITORY}"
+          gh variable set DEMO_STATE --body ready --repo "${GITHUB_REPOSITORY}"

@@ -1,0 +1,42 @@
+services:
+  app:
+    image: ${DEMO_IMAGE_REFERENCE:?set DEMO_IMAGE_REFERENCE to an immutable image digest}
+    restart: unless-stopped
+    environment:
+      AUTH_AUDIENCE: ${AUTH_AUDIENCE}
+      AUTH_HS256_SECRET: ${AUTH_HS256_SECRET}
+      AUTH_ISSUER: ${AUTH_ISSUER}
+      OTEL_EXPORTER_OTLP_ENDPOINT: http://otel-collector:4318
+      OTEL_RESOURCE_ATTRIBUTES: deployment.environment.name=${DEPLOYMENT_ENVIRONMENT:-demo}
+      OTEL_SERVICE_NAME: talkdesk-coolify-demo
+      PORT: "3000"
+    depends_on:
+      otel-collector:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://127.0.0.1:3000/healthz"]
+      interval: 15s
+      timeout: 3s
+      retries: 3
+      start_period: 20s
+    ports:
+      - "3000:3000"
+
+  otel-collector:
+    image: otel/opentelemetry-collector-contrib:0.141.0@sha256:b14234c4bc1b7364629af272e564913bb57bdc9736d45b8b6db5ab3417dc75f9
+    restart: unless-stopped
+    command: ["--config=/etc/otelcol-contrib/config.yaml"]
+    environment:
+      DEPLOYMENT_ENVIRONMENT: ${DEPLOYMENT_ENVIRONMENT:-demo}
+      JAEGER_ZIPKIN_URL: ${JAEGER_ZIPKIN_URL}
+      LOKI_URL: ${LOKI_URL}
+      OBSERVENOW_PASSWORD: ${OBSERVENOW_PASSWORD}
+      OBSERVENOW_USERNAME: ${OBSERVENOW_USERNAME}
+      VICTORIA_METRICS_URL: ${VICTORIA_METRICS_URL}
+    volumes:
+      - ./otel-collector.yaml:/etc/otelcol-contrib/config.yaml:ro
+    healthcheck:
+      test: ["CMD", "/otelcol-contrib", "validate", "--config=/etc/otelcol-contrib/config.yaml"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
