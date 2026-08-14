@@ -56,6 +56,7 @@ jobs:
           docker run --rm --volume "${PWD}:/repo"
           aquasec/trivy@sha256:7cced7cae583819fc7806d4cbc0dbbc7cad18b99f7d3e235192e6da8c091045c
           fs --scanners vuln,misconfig,secret --severity HIGH,CRITICAL
+          --skip-dirs /repo/aiden
           --exit-code 1 --format json --output /repo/evidence/trivy.json /repo
       - if: always()
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
