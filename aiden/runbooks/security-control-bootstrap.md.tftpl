@@ -2,7 +2,7 @@
 
 Repository allowlist: `${repository}`. Default branch: `${default_branch}`. Authorized automation identity: `${github_app_login}`.
 
-1. Confirm `repository_full_name` exactly matches the allowlist, the PR is open and same-repository, its base is `${default_branch}`, it has the `demo-application` label, it is not labeled `demo-reset`, and `DEMO_STATE` is not `resetting`.
+1. Confirm `repository_full_name` exactly matches the allowlist, the PR is open and same-repository, its base is `${default_branch}`, and it has the `demo-application` label and not `demo-reset`. Read `DEMO_STATE` only as the GitHub Actions repository variable at `repos/${repository}/actions/variables/DEMO_STATE`, never as a repository file. If that variable is absent (404), record the implicit initial state as `ready`; if its value is `resetting`, stop; any other API failure is a stop condition.
 2. Capture the application PR head SHA and require it to equal input `head_sha`.
 3. Inspect `.github/workflows` on the captured `${default_branch}` SHA for `security-gate`; do not infer that a control is installed from GitHub's repository workflow catalog, which can include historical definitions. Record whether the security control is already present on `${default_branch}`.
 4. Only when the control is absent, read `demo/control-templates/manifest.json`. Recalculate every source SHA-256 and require equality with the manifest.
