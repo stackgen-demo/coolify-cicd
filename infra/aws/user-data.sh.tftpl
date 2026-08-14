@@ -8,7 +8,15 @@ export DEBIAN_FRONTEND=noninteractive
 sed -i 's|http://|https://|g' /etc/apt/sources.list 2>/dev/null || true
 sed -i 's|http://|https://|g' /etc/apt/sources.list.d/ubuntu.sources 2>/dev/null || true
 apt-get update
-apt-get install --yes awscli ca-certificates curl jq unzip
+apt-get install --yes ca-certificates curl jq unzip
+
+curl --fail --silent --show-error --location \
+  https://awscli.amazonaws.com/awscli-exe-linux-x86_64.zip \
+  --output /tmp/awscliv2.zip
+echo "${awscli_sha256}  /tmp/awscliv2.zip" | sha256sum --check --strict
+unzip -q /tmp/awscliv2.zip -d /tmp
+/tmp/aws/install --bin-dir /usr/local/bin --install-dir /usr/local/aws-cli
+aws --version
 
 curl --fail --silent --show-error --location \
   https://cdn.coollabs.io/coolify/install.sh \

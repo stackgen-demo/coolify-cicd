@@ -313,6 +313,7 @@ resource "aws_instance" "coolify" {
   }
 
   user_data = templatefile("${path.module}/user-data.sh.tftpl", {
+    awscli_sha256         = var.awscli_installer_sha256
     aws_region            = var.aws_region
     coolify_sha256        = var.coolify_installer_sha256
     coolify_secret_arn    = var.coolify_api_secret_arn
