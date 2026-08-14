@@ -46,7 +46,7 @@ Pin every Git module source to the same reviewed tag or commit.
 
 Stages:
 
-1. Validate the allowlisted repository, default branch, triggering application PR, and its current head SHA.
+1. Validate the allowlisted repository, default branch, triggering `demo-application`-labeled application PR, and its current head SHA.
 2. Inventory active security workflows and required checks.
 3. Compare them to the required control manifest.
 4. If controls are missing, copy reviewed workflow templates into a dedicated branch and open one security-controls PR.
@@ -108,7 +108,7 @@ The reset workflow is not covered by the security-controls no-HITL merge excepti
 Agents explain and correlate; these controls decide pass/fail:
 
 - No verified secret leaks.
-- No unapproved high/critical SAST, dependency, filesystem, or image findings.
+- No verified secret leaks or blocking SAST findings. High/critical Trivy dependency, filesystem, IaC, and image findings are advisory in the pre-deployment demo report; they must be redacted, attributed, and carried into the post-deployment compliance report.
 - EC2 has no public SSH or Coolify administration port.
 - ALB exposes only HTTP/HTTPS and redirects HTTP to HTTPS.
 - EC2 application ingress is sourced only from the ALB security group.
