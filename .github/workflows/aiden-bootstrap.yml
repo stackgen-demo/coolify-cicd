@@ -12,6 +12,8 @@ jobs:
     if: >-
       github.event.pull_request.head.repo.full_name == github.repository &&
       !startsWith(github.event.pull_request.head.ref, 'security-controls/') &&
+      !startsWith(github.event.pull_request.head.ref, 'demo-reset/') &&
+      (github.event.action == 'reopened' || !startsWith(github.event.pull_request.head.ref, 'demo-replay/')) &&
       contains(github.event.pull_request.labels.*.name, 'demo-application') &&
       !contains(github.event.pull_request.labels.*.name, 'demo-reset') &&
       vars.DEMO_STATE != 'resetting'

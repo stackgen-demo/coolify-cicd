@@ -89,19 +89,19 @@ Active probes must have a ten-minute maximum, an explicit host allowlist, a requ
 
 Reset only repository and GitHub control state. Do not tear down or modify EC2, ALB, WAF, Coolify, the running application, Aiden resources, Grafana, the OpsVerse agent, or the OpenTelemetry pipeline. Do not invoke the Coolify deploy webhook during reset.
 
-Use a deterministic, manually dispatched reset workflow with a protected `demo-reset` environment. It must require no operator-entered run metadata: discover the prior demo context from the latest merged security-controls PR, its linked application PR, repository variables, and the last deployment workflow record. It must:
+Use a deterministic, manually dispatched reset workflow with a protected `demo-reset` environment. It must require no operator-entered run metadata: discover the prior demo context from the latest merged security-controls PR, its linked application PR, static workflow variables, and the last deployment workflow record. It must:
 
-1. Set the demo state to `resetting` so Aiden ignores reset branches, PRs, comments, and commits.
+1. Use dedicated reset and replay branch guards so Aiden ignores reset PRs and the initial creation of the closed replay PR.
 2. Record the completed run ID, application PR, controls PR, merge SHAs, deployment UUID, artifact digest, and report location.
-3. Remove the demo-installed `security-gate` requirement from the repository ruleset or branch protection configuration.
+3. Retain the demo-installed `security-gate` requirement so the baseline remains protected; the next controls PR restores its workflow before the replay application PR is advanced.
 4. Restore the repository working tree by reverting the known application and security-controls merge commits. Create revert commits or a reset PR; never force-push or rewrite the default branch.
 5. Preserve all historic demo PRs and branches so prior runs remain available for the demonstration. Create a new closed, labeled replay application PR from the reset baseline, retain its branch, and clearly instruct the operator to reopen it to trigger the next demo run.
 6. Verify that the repository matches the declared baseline manifest and that the security workflow files and policies installed by the demo are absent.
-7. Set a new `demo_run_id`, return the demo state to `ready`, and re-enable the bootstrap trigger.
+7. Leave repository Actions variables unchanged and re-enable the bootstrap trigger when the operator reopens the replay PR.
 
 Preserve Aiden execution history, compliance reports, Coolify deployment history, and observability data. Dashboards must filter by `demo_run_id` so previous runs remain available without contaminating the next demonstration.
 
-The reset workflow is not covered by the security-controls no-HITL merge exception. Reset requires explicit operator dispatch and any approval configured on the protected `demo-reset` environment. It uses the scoped GitHub Actions token with `actions: write`, `contents: write`, and `pull-requests: write`; it has no separately managed reset-token prerequisite.
+The reset workflow is not covered by the security-controls no-HITL merge exception. Reset requires explicit operator dispatch and any approval configured on the protected `demo-reset` environment. It uses the scoped GitHub Actions token with `actions: read`, `contents: write`, and `pull-requests: write`; it has no separately managed reset-token prerequisite.
 
 ## Deterministic Controls
 
