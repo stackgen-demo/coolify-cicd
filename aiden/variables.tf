@@ -76,9 +76,56 @@ variable "aws_integration_name" {
   default = "stackgen-sandbox"
 }
 
+variable "linear_integration_name" {
+  description = "Existing enabled Linear integration used to create the post-assessment SOC 2 ticket."
+  type        = string
+  default     = "devops-linear"
+}
+
 variable "aws_region" {
   type    = string
   default = "us-east-1"
+}
+
+variable "direct_pentest_target_url" {
+  description = "Exact HTTPS URL allowlisted for the expedited direct post-deployment assessment."
+  type        = string
+  default     = "https://talkdesk-coolify.demo.stackgen.com"
+
+  validation {
+    condition     = can(regex("^https://[A-Za-z0-9.-]+(?::[0-9]+)?/?$", var.direct_pentest_target_url))
+    error_message = "direct_pentest_target_url must be one exact HTTPS origin without a path, query, or fragment."
+  }
+}
+
+variable "direct_pentest_alb_arn" {
+  description = "Exact demo ALB ARN allowlisted for direct AWS posture reads."
+  type        = string
+  default     = "arn:aws:elasticloadbalancing:us-east-1:180217099948:loadbalancer/app/talkdesk-coolify-demo/3f4b3a514b72ef3a"
+}
+
+variable "direct_pentest_alb_security_group_id" {
+  description = "Exact demo ALB security group allowlisted for direct ingress and egress reads."
+  type        = string
+  default     = "sg-00e3a0823d9d6f8ca"
+}
+
+variable "direct_pentest_ec2_security_group_id" {
+  description = "Exact demo EC2 security group allowlisted for direct ingress and egress reads."
+  type        = string
+  default     = "sg-093fe8005fedfdb46"
+}
+
+variable "direct_pentest_waf_header_name" {
+  description = "Non-secret demo header name required by WAF on /api paths."
+  type        = string
+  default     = "x-demo-client"
+}
+
+variable "direct_pentest_waf_header_value" {
+  description = "Non-secret demo header value accepted by WAF on /api paths."
+  type        = string
+  default     = "talkdesk-security-demo"
 }
 
 variable "webhook_allowed_cidrs" {

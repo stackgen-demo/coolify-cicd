@@ -10,8 +10,8 @@ flowchart LR
   U --> S["Gitleaks, Semgrep, Trivy, tests, OPA"]
   S -->|"all deterministic checks pass"| M["Manual application approval and merge"]
   M --> D["Coolify redeploys immutable image digest"]
-  D --> P["Nmap, AWS, WAF, TLS, auth, ZAP, observability"]
-  P --> R["OPA decision + report + Aiden assessment"]
+  D --> P["Direct Nmap, AWS, WAF, TLS, and auth assessment"]
+  P --> R["SOC 2-oriented report + Linear ticket"]
 ```
 
 ## What is built
@@ -32,7 +32,7 @@ flowchart LR
 4. Aiden creates/verifies the dedicated `security-gate` ruleset, comments on the original PR, and updates that branch from `main` with GitHub's compare-and-swap `expected_head_sha` operation. That update creates the fresh event and SHA needed to run the newly installed gate.
 5. Gitleaks, Semgrep, Trivy, unit/auth tests, npm audit, and OPA run. Their deterministic `security-gate` check must pass. Aiden posts a correlated explanation; a human still approves and merges the application PR.
 6. The deployment workflow independently verifies that `security-gate` succeeded for the recorded application head SHA, then asks Coolify to redeploy the same reviewed image digest. Coolify's Deployments view and logs show progress while the workflow polls the deployment API.
-7. After deployment, bounded checks collect public ports, EC2 security-group ingress/egress, ALB listeners, WAF attachment/header behavior, HTTPS/TLS behavior, JWT failure cases, ZAP results, and correlated telemetry in VictoriaMetrics, Loki, Jaeger, and the OpsVerse host agent. OPA generates the pass/fail decision and report; Aiden publishes the explanation.
+7. After deployment, the expedited Aiden workflow directly checks public ports, EC2 security-group ingress/egress, ALB listeners, WAF attachment/header behavior, HTTPS/TLS behavior, and unauthenticated JWT failure cases. A workflow workspace and VictoriaMetrics/Loki/Jaeger/OpsVerse correlation are not required; observability is explicitly marked NOT ASSESSED. Aiden publishes the redacted SOC 2-oriented assessment and then creates one Linear ticket.
 8. The protected reset workflow reverts the recorded application and controls merge commits and removes only the demo ruleset/branches. It does not redeploy or modify EC2, Coolify, Aiden, Grafana, or historical telemetry.
 
 Start with [docs/DEMO_RUNBOOK.md](docs/DEMO_RUNBOOK.md). Credentials previously pasted into chat are treated as compromised and must be rotated before any apply or deployment.

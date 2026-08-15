@@ -11,12 +11,16 @@ locals {
   github_integration_name  = data.sg_guild_integration.github.name
   grafana_integration_name = data.sg_guild_integration.grafana.name
   aws_integration_name     = data.sg_guild_integration.aws.name
+  linear_integration_name  = data.sg_guild_integration.linear.name
   remote_runner_name       = data.sg_remote_runner.demo.name
 
   agent_names = {
-    bootstrap  = "security-control-operator${var.name_suffix}"
-    pr_review  = "security-evidence-analyst${var.name_suffix}"
-    postdeploy = "postdeploy-assessor${var.name_suffix}"
+    bootstrap      = "security-control-operator${var.name_suffix}"
+    pr_review      = "security-evidence-analyst${var.name_suffix}"
+    postdeploy     = "postdeploy-assessor${var.name_suffix}"
+    direct_pentest = "direct-pentest-assessor${var.name_suffix}"
+    linear_ticket  = "soc2-linear-publisher${var.name_suffix}"
+    direct_linear  = "direct-soc2-linear-publisher${var.name_suffix}"
   }
 }
 
@@ -33,6 +37,10 @@ data "sg_guild_integration" "grafana" {
 
 data "sg_guild_integration" "aws" {
   name = var.aws_integration_name
+}
+
+data "sg_guild_integration" "linear" {
+  name = var.linear_integration_name
 }
 
 data "sg_remote_runner" "demo" {
@@ -53,9 +61,10 @@ resource "terraform_data" "prerequisites" {
       condition = (
         data.sg_guild_integration.github.type == "github" && data.sg_guild_integration.github.enabled &&
         data.sg_guild_integration.grafana.type == "grafana" && data.sg_guild_integration.grafana.enabled &&
-        data.sg_guild_integration.aws.type == "aws" && data.sg_guild_integration.aws.enabled
+        data.sg_guild_integration.aws.type == "aws" && data.sg_guild_integration.aws.enabled &&
+        data.sg_guild_integration.linear.type == "linear" && data.sg_guild_integration.linear.enabled
       )
-      error_message = "The selected existing GitHub, Grafana, and AWS integrations must have the expected type and be enabled."
+      error_message = "The selected existing GitHub, Grafana, AWS, and Linear integrations must have the expected type and be enabled."
     }
     precondition {
       condition     = local.policy_ids.dangerous_ops != "" && local.policy_ids.data_risk_pii != ""
@@ -135,11 +144,76 @@ resource "sg_agent" "postdeploy" {
     local.grafana_integration_name,
   ]
   remote_runners = [local.remote_runner_name]
-  hitl           = { always_allowed = ["note", "read_notes"] }
+  hitl = {
+    always_allowed = [
+      "note",
+      "read_notes",
+    ]
+  }
   auto_approve_tools = [
     { tool = "${local.github_integration_name}_execute_series" },
     { tool = "${local.remote_runner_name}_execute_command" },
   ]
+
+  depends_on = [terraform_data.prerequisites]
+}
+
+resource "sg_agent" "linear_ticket" {
+  name        = local.agent_names.linear_ticket
+  persona     = templatefile("${path.module}/personas/soc2-linear-publisher.md.tftpl", { repository = var.repository_full_name })
+  model_names = local.model_names
+  integrations = [
+    local.linear_integration_name,
+  ]
+  hitl = {
+    always_allowed = [
+      "note",
+      "read_notes",
+      "${local.linear_integration_name}_create_issue",
+    ]
+  }
+
+  depends_on = [terraform_data.prerequisites]
+}
+
+resource "sg_agent" "direct_pentest" {
+  name = local.agent_names.direct_pentest
+  persona = templatefile("${path.module}/personas/direct-pentest-assessor.md.tftpl", {
+    repository = var.repository_full_name
+    target_url = trimsuffix(var.direct_pentest_target_url, "/")
+  })
+  model_names = local.model_names
+  integrations = [
+    local.aws_integration_name,
+  ]
+  remote_runners = [local.remote_runner_name]
+  hitl = {
+    always_allowed = [
+      "note",
+      "read_notes",
+    ]
+  }
+  auto_approve_tools = [
+    { tool = "${local.remote_runner_name}_execute_command" },
+  ]
+
+  depends_on = [terraform_data.prerequisites]
+}
+
+resource "sg_agent" "direct_linear" {
+  name        = local.agent_names.direct_linear
+  persona     = templatefile("${path.module}/personas/direct-soc2-linear-publisher.md.tftpl", { repository = var.repository_full_name })
+  model_names = local.model_names
+  integrations = [
+    local.linear_integration_name,
+  ]
+  hitl = {
+    always_allowed = [
+      "note",
+      "read_notes",
+      "${local.linear_integration_name}_create_issue",
+    ]
+  }
 
   depends_on = [terraform_data.prerequisites]
 }
@@ -151,14 +225,17 @@ resource "sg_agent_budget" "custom" {
   limit_usd   = var.daily_agent_budget_usd
   period_type = "daily"
 
-  depends_on = [sg_agent.bootstrap, sg_agent.pr_review, sg_agent.postdeploy]
+  depends_on = [sg_agent.bootstrap, sg_agent.pr_review, sg_agent.postdeploy, sg_agent.direct_pentest, sg_agent.linear_ticket, sg_agent.direct_linear]
 }
 
 resource "sg_agent_policy_attachment" "dangerous_ops" {
   for_each = {
-    bootstrap  = sg_agent.bootstrap.name
-    pr_review  = sg_agent.pr_review.name
-    postdeploy = sg_agent.postdeploy.name
+    bootstrap      = sg_agent.bootstrap.name
+    pr_review      = sg_agent.pr_review.name
+    postdeploy     = sg_agent.postdeploy.name
+    direct_pentest = sg_agent.direct_pentest.name
+    linear_ticket  = sg_agent.linear_ticket.name
+    direct_linear  = sg_agent.direct_linear.name
   }
 
   agent_name = each.value
@@ -168,6 +245,24 @@ resource "sg_agent_policy_attachment" "dangerous_ops" {
 
 resource "sg_agent_policy_attachment" "postdeploy_data_risk" {
   agent_name = sg_agent.postdeploy.name
+  policy_id  = local.policy_ids.data_risk_pii
+  enabled    = true
+}
+
+resource "sg_agent_policy_attachment" "direct_pentest_data_risk" {
+  agent_name = sg_agent.direct_pentest.name
+  policy_id  = local.policy_ids.data_risk_pii
+  enabled    = true
+}
+
+resource "sg_agent_policy_attachment" "direct_linear_data_risk" {
+  agent_name = sg_agent.direct_linear.name
+  policy_id  = local.policy_ids.data_risk_pii
+  enabled    = true
+}
+
+resource "sg_agent_policy_attachment" "linear_ticket_data_risk" {
+  agent_name = sg_agent.linear_ticket.name
   policy_id  = local.policy_ids.data_risk_pii
   enabled    = true
 }
@@ -185,9 +280,16 @@ resource "sg_runbook_sop" "pr_review" {
 }
 
 resource "sg_runbook_sop" "postdeploy" {
-  name        = "postdeploy-adversarial-assurance${var.name_suffix}"
-  approve     = true
-  description = file("${path.module}/runbooks/postdeploy-adversarial-assurance.md")
+  name    = "postdeploy-adversarial-assurance${var.name_suffix}"
+  approve = true
+  description = templatefile("${path.module}/runbooks/postdeploy-adversarial-assurance.md.tftpl", {
+    target_url            = trimsuffix(var.direct_pentest_target_url, "/")
+    alb_arn               = var.direct_pentest_alb_arn
+    alb_security_group_id = var.direct_pentest_alb_security_group_id
+    ec2_security_group_id = var.direct_pentest_ec2_security_group_id
+    waf_header_name       = var.direct_pentest_waf_header_name
+    waf_header_value      = var.direct_pentest_waf_header_value
+  })
 }
 
 resource "sg_workflow" "bootstrap" {
@@ -252,30 +354,31 @@ resource "sg_workflow" "pr_review" {
 resource "sg_workflow" "postdeploy" {
   name        = "postdeploy-adversarial-assurance${var.name_suffix}"
   domain      = "security"
-  description = "Correlate bounded post-deployment AWS, network, application, and observability evidence and publish compliance status."
+  description = "Directly assess the allowlisted deployed host and AWS posture, publish a redacted SOC 2 assessment with observability marked not assessed, and create one Linear ticket."
   approve     = true
 
-  required_inputs = ["repository_full_name", "commit_sha", "image_digest", "coolify_deployment_uuid", "target_url", "aws_region", "demo_run_id", "evidence_run_id", "report_location"]
+  required_inputs = ["target_url", "aws_region"]
+  optional_inputs = ["repository_full_name", "commit_sha", "image_digest", "coolify_deployment_uuid", "demo_run_id", "evidence_run_id", "report_location"]
   runbook_refs    = [sg_runbook_sop.postdeploy.name]
 
   stages = [
-    { stage_id = "validate-scope", description = "Validate allowlisted host, repository, deployment identity, and immutable image digest.", required = true },
-    { stage_id = "read-aws-posture", description = "Read ALB, WAF, TLS, ingress, egress, and EC2 management exposure evidence.", required = true },
-    { stage_id = "read-active-scan-evidence", description = "Read Nmap, ZAP, authentication, header, and TLS artifacts.", required = true },
-    { stage_id = "bounded-follow-up", description = "Run only justified allowlisted non-destructive HTTP probes.", required = true },
-    { stage_id = "correlate-observability", description = "Confirm demo_run_id in VictoriaMetrics, Loki, and Jaeger and validate OpsVerse health.", required = true },
-    { stage_id = "evaluate-controls", description = "Evaluate the deterministic policy decision and explain failures without overriding it.", required = true },
-    { stage_id = "publish-assessment", description = "Publish one redacted compliance assessment with evidence links.", required = true },
+    { stage_id = "validate-scope", description = "Validate that target_url exactly matches the configured HTTPS origin; reject any IP, CIDR, redirect target, or alternate hostname.", required = true },
+    { stage_id = "read-aws-posture", description = "Read ALB, WAF, TLS, security-group ingress/egress, and EC2 management exposure directly from AWS.", required = true },
+    { stage_id = "direct-network-scan", description = "Run one bounded Nmap TCP connect scan against the exact allowlisted hostname.", required = true },
+    { stage_id = "direct-http-tls-auth-probes", description = "Run bounded non-destructive HTTPS, TLS, security-header, WAF-header, and unauthenticated authentication probes.", required = true },
+    { stage_id = "evaluate-controls", description = "Evaluate the direct evidence; mark observability NOT ASSESSED and do not block because telemetry evidence is absent.", required = true },
+    { stage_id = "publish-assessment", description = "Publish one redacted SOC 2-oriented assessment containing direct findings and explicit coverage limitations.", required = true },
+    { stage_id = "create-linear-ticket", description = "After the SOC 2 assessment is published, create one redacted Linear ticket containing its results and evidence links.", required = true },
   ]
 
   stage_bindings = [
-    { stage_id = "validate-scope", agent_ref = sg_agent.postdeploy.name, runbook_refs = [sg_runbook_sop.postdeploy.name], skill_refs = [sg_runbook_sop.postdeploy.name] },
-    { stage_id = "read-aws-posture", agent_ref = sg_agent.postdeploy.name, stage_depends_on = ["validate-scope"], runbook_refs = [sg_runbook_sop.postdeploy.name], skill_refs = [sg_runbook_sop.postdeploy.name] },
-    { stage_id = "read-active-scan-evidence", agent_ref = sg_agent.postdeploy.name, stage_depends_on = ["validate-scope"], runbook_refs = [sg_runbook_sop.postdeploy.name], skill_refs = [sg_runbook_sop.postdeploy.name] },
-    { stage_id = "bounded-follow-up", agent_ref = sg_agent.postdeploy.name, stage_depends_on = ["read-active-scan-evidence"], runbook_refs = [sg_runbook_sop.postdeploy.name], skill_refs = [sg_runbook_sop.postdeploy.name] },
-    { stage_id = "correlate-observability", agent_ref = sg_agent.postdeploy.name, stage_depends_on = ["read-aws-posture", "bounded-follow-up"], runbook_refs = [sg_runbook_sop.postdeploy.name], skill_refs = [sg_runbook_sop.postdeploy.name] },
-    { stage_id = "evaluate-controls", agent_ref = sg_agent.postdeploy.name, stage_depends_on = ["correlate-observability"], runbook_refs = [sg_runbook_sop.postdeploy.name], skill_refs = [sg_runbook_sop.postdeploy.name] },
-    { stage_id = "publish-assessment", agent_ref = sg_agent.postdeploy.name, stage_depends_on = ["evaluate-controls"], runbook_refs = [sg_runbook_sop.postdeploy.name], skill_refs = [sg_runbook_sop.postdeploy.name] },
+    { stage_id = "validate-scope", agent_ref = sg_agent.direct_pentest.name, runbook_refs = [sg_runbook_sop.postdeploy.name], skill_refs = [sg_runbook_sop.postdeploy.name] },
+    { stage_id = "read-aws-posture", agent_ref = sg_agent.direct_pentest.name, stage_depends_on = ["validate-scope"], runbook_refs = [sg_runbook_sop.postdeploy.name], skill_refs = [sg_runbook_sop.postdeploy.name] },
+    { stage_id = "direct-network-scan", agent_ref = sg_agent.direct_pentest.name, stage_depends_on = ["validate-scope"], runbook_refs = [sg_runbook_sop.postdeploy.name], skill_refs = [sg_runbook_sop.postdeploy.name] },
+    { stage_id = "direct-http-tls-auth-probes", agent_ref = sg_agent.direct_pentest.name, stage_depends_on = ["validate-scope"], runbook_refs = [sg_runbook_sop.postdeploy.name], skill_refs = [sg_runbook_sop.postdeploy.name] },
+    { stage_id = "evaluate-controls", agent_ref = sg_agent.direct_pentest.name, stage_depends_on = ["read-aws-posture", "direct-network-scan", "direct-http-tls-auth-probes"], runbook_refs = [sg_runbook_sop.postdeploy.name], skill_refs = [sg_runbook_sop.postdeploy.name] },
+    { stage_id = "publish-assessment", agent_ref = sg_agent.direct_pentest.name, stage_depends_on = ["evaluate-controls"], runbook_refs = [sg_runbook_sop.postdeploy.name], skill_refs = [sg_runbook_sop.postdeploy.name] },
+    { stage_id = "create-linear-ticket", agent_ref = sg_agent.direct_linear.name, stage_depends_on = ["publish-assessment"], runbook_refs = [sg_runbook_sop.postdeploy.name], skill_refs = [sg_runbook_sop.postdeploy.name] },
   ]
 }
 
@@ -303,7 +406,7 @@ resource "sg_webhook" "postdeploy" {
   name           = "postdeploy-adversarial-assurance${var.name_suffix}"
   target_type    = "workflow"
   target_name    = sg_workflow.postdeploy.name
-  action         = "A successful Coolify redeployment produced bounded security evidence. Correlate it and publish a redacted compliance assessment."
+  action         = "Directly assess the exact allowlisted deployed host and AWS posture. Do not require a workflow workspace, evidence artifacts, demo_run_id, or observability data. Mark observability NOT ASSESSED, publish a redacted assessment, then create one Linear issue."
   enabled        = true
   allowed_cidrs  = length(var.webhook_allowed_cidrs) > 0 ? var.webhook_allowed_cidrs : null
   token_rotation = "v1"
