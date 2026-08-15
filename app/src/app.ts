@@ -39,7 +39,7 @@ export function createApp(verifyToken: TokenVerifier) {
     response.type("html").send(`<!doctype html>
 <html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
 <title>Talkdesk Secure Delivery Demo</title></head>
-<body><main><h1>Talkdesk Secure Delivery Demo</h1><p>The application is healthy and emitting OpenTelemetry.</p></main></body></html>`);
+<body><main><h1>Talkdesk Secure Delivery Demo</h1><p>The application is healthy, policy-scanned, and emitting OpenTelemetry.</p></main></body></html>`);
   });
   app.get("/healthz", (_request, response) => response.json({ status: "ok" }));
   app.get("/readyz", (_request, response) => response.json({ status: "ready" }));
