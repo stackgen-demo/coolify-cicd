@@ -35,7 +35,7 @@ flowchart LR
 7. After deployment, bounded checks collect public ports, EC2 security-group ingress/egress, ALB listeners, WAF attachment/header behavior, HTTPS/TLS behavior, JWT failure cases, ZAP results, and correlated telemetry in VictoriaMetrics, Loki, Jaeger, and the OpsVerse host agent. OPA generates the pass/fail decision and report; Aiden publishes the explanation.
 8. The protected reset workflow reverts the recorded application and controls merge commits and removes only the demo ruleset/branches. It does not redeploy or modify EC2, Coolify, Aiden, Grafana, or historical telemetry.
 
-Start with [docs/DEMO_RUNBOOK.md](docs/DEMO_RUNBOOK.md). Credentials previously pasted into chat are treated as compromised and must be rotated before any apply or deployment.
+Start with [docs/DEMO_RUNBOOK.md](docs/DEMO_RUNBOOK.md).
 
 ## Local validation
 

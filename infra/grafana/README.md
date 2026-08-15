@@ -16,4 +16,4 @@ tofu plan -out=tfplan
 unset TF_VAR_grafana_auth
 ```
 
-The token is time-limited. Replace it if expired and rotate any administrator or backend credentials previously pasted into chat.
+The token is time-limited. Replace it if expired.

@@ -93,7 +93,7 @@ variable "waf_header_value" {
 }
 
 variable "opsverse_agent_secret_arn" {
-  description = "Existing AWS Secrets Manager secret ARN containing only the rotated OpsVerse agent token."
+  description = "Existing AWS Secrets Manager secret ARN containing only the OpsVerse agent token."
   type        = string
   sensitive   = true
 }
