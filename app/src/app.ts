@@ -38,8 +38,8 @@ export function createApp(verifyToken: TokenVerifier) {
   app.get("/", (_request, response) => {
     response.type("html").send(`<!doctype html>
 <html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
-<title>Coolify Secure Delivery Demo</title></head>
-<body><main><h1>Coolify Secure Delivery Demo</h1><p>The application is healthy and emitting OpenTelemetry.</p></main></body></html>`);
+<title>Secure Delivery Demo</title></head>
+<body><main><h1>Secure Delivery Demo</h1><p>The application is healthy and emitting OpenTelemetry.</p></main></body></html>`);
   });
   app.get("/healthz", (_request, response) => response.json({ status: "ok" }));
   app.get("/readyz", (_request, response) => response.json({ status: "ready" }));

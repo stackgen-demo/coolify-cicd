@@ -11,7 +11,7 @@
       "gridPos": {"h": 8, "w": 12, "x": 0, "y": 0},
       "id": 1,
       "options": {"legend": {"displayMode": "table", "placement": "bottom"}},
-      "targets": [{"editorMode": "code", "expr": "sum by (http_response_status_code) (rate(coolify_security_demo_http_requests_total{demo_run_id=\"$demo_run_id\"}[5m]))", "legendFormat": "HTTP {{http_response_status_code}}", "refId": "A"}],
+      "targets": [{"editorMode": "code", "expr": "sum by (http_response_status_code) (rate(security_demo_http_requests_total{demo_run_id=\"$demo_run_id\"}[5m]))", "legendFormat": "HTTP {{http_response_status_code}}", "refId": "A"}],
       "title": "Request rate by status",
       "type": "timeseries"
     },
@@ -20,7 +20,7 @@
       "fieldConfig": {"defaults": {"unit": "ms"}, "overrides": []},
       "gridPos": {"h": 8, "w": 12, "x": 12, "y": 0},
       "id": 2,
-      "targets": [{"editorMode": "code", "expr": "histogram_quantile(0.95, sum by (le) (rate(coolify_security_demo_http_request_duration_bucket{demo_run_id=\"$demo_run_id\"}[5m])))", "legendFormat": "p95", "refId": "A"}],
+      "targets": [{"editorMode": "code", "expr": "histogram_quantile(0.95, sum by (le) (rate(security_demo_http_request_duration_bucket{demo_run_id=\"$demo_run_id\"}[5m])))", "legendFormat": "p95", "refId": "A"}],
       "title": "HTTP p95 latency",
       "type": "timeseries"
     },
@@ -29,7 +29,7 @@
       "gridPos": {"h": 10, "w": 16, "x": 0, "y": 8},
       "id": 3,
       "options": {"dedupStrategy": "none", "enableLogDetails": true, "showLabels": false, "showTime": true, "sortOrder": "Descending"},
-      "targets": [{"expr": "{service_name=\"coolify-security-demo\"} |= \"$demo_run_id\"", "refId": "A"}],
+      "targets": [{"expr": "{service_name=\"security-demo\"} |= \"$demo_run_id\"", "refId": "A"}],
       "title": "Application logs",
       "type": "logs"
     },
@@ -37,7 +37,7 @@
       "datasource": {"type": "jaeger", "uid": "${jaeger_uid}"},
       "gridPos": {"h": 10, "w": 8, "x": 16, "y": 8},
       "id": 4,
-      "targets": [{"queryType": "search", "refId": "A", "service": "coolify-security-demo", "tags": {"demo.run_id": "$demo_run_id"}}],
+      "targets": [{"queryType": "search", "refId": "A", "service": "security-demo", "tags": {"demo.run_id": "$demo_run_id"}}],
       "title": "Deployment traces",
       "type": "traces"
     },
@@ -62,7 +62,7 @@
   ],
   "refresh": "15s",
   "schemaVersion": 41,
-  "tags": ["coolify", "aiden", "security-demo"],
+  "tags": ["aiden", "security-demo"],
   "templating": {
     "list": [
       {"current": {"text": "unassigned", "value": "unassigned"}, "hide": 0, "label": "Demo run ID", "name": "demo_run_id", "options": [], "query": "unassigned", "skipUrlSync": false, "type": "textbox"}
@@ -70,7 +70,7 @@
   },
   "time": {"from": "now-30m", "to": "now"},
   "timezone": "browser",
-  "title": "Coolify Secure Delivery Demo",
-  "uid": "coolify-secure-delivery",
+  "title": "Secure Delivery Demo",
+  "uid": "security-delivery-demo",
   "version": 1
 }

@@ -1,10 +1,10 @@
 import { context, metrics, trace } from "@opentelemetry/api";
 
-const meter = metrics.getMeter("coolify-security-demo-http");
-const requestCounter = meter.createCounter("coolify_security_demo_http_requests", {
+const meter = metrics.getMeter("security-demo-http");
+const requestCounter = meter.createCounter("security_demo_http_requests", {
   description: "HTTP requests handled by the demo application",
 });
-const requestDuration = meter.createHistogram("coolify_security_demo_http_request_duration", {
+const requestDuration = meter.createHistogram("security_demo_http_request_duration", {
   description: "HTTP request duration in milliseconds",
   unit: "ms",
 });

@@ -17,7 +17,7 @@ set -euo pipefail
 : "${OBSERVENOW_USERNAME:?OBSERVENOW_USERNAME is required}"
 : "${VICTORIA_METRICS_URL:?VICTORIA_METRICS_URL is required}"
 
-application_name="${COOLIFY_APPLICATION_NAME:-coolify-security-demo}"
+application_name="${COOLIFY_APPLICATION_NAME:-security-demo}"
 api_base="${COOLIFY_BASE_URL%/}/api/v1"
 
 curl_api() {

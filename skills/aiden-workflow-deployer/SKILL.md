@@ -1,6 +1,6 @@
 ---
 name: aiden-workflow-deployer
-description: Configure, validate, deploy, update, or troubleshoot Aiden/Guild agents and workflows with Terraform/OpenTofu and the StackGen provider. Use for Aiden workflow roots, sg_agent/sg_workflow/sg_webhook resources, Guild integrations and policies, schedules, workspace resolution, additive plans, or the Coolify security and observability agents in this repository.
+description: Configure, validate, deploy, update, or troubleshoot Aiden/Guild agents and workflows with Terraform/OpenTofu and the StackGen provider. Use for Aiden workflow roots, sg_agent/sg_workflow/sg_webhook resources, Guild integrations and policies, schedules, workspace resolution, additive plans, or the security and observability agents in this repository.
 ---
 
 # Aiden Workflow Deployer
@@ -11,7 +11,7 @@ Deploy Aiden resources as code while preserving live workspace resources and sec
 
 1. Read the nearest repository `AGENTS.md`.
 2. Read `/Users/arunav/Documents/GitHub/Guild-Solutions/AGENTS.md`.
-3. For this repository, read `references/coolify-security-demo-contract.md`.
+3. For this repository, read `references/security-demo-contract.md`.
 4. Read `references/resource-patterns.md` when authoring or changing HCL resources.
 5. Read each selected Guild-Solutions module's `variables.tf`, `outputs.tf`, and `README.md`. Treat `variables.tf` as authoritative.
 
@@ -87,7 +87,7 @@ make -C /Users/arunav/Documents/GitHub/Guild-Solutions verify-workflow-stage-bin
 - Never hard-code PATs, API keys, passwords, webhook tokens, model keys, or backend credentials.
 - Never print sensitive Terraform outputs or save secrets in tfvars, plans committed to Git, workflow descriptions, or reports.
 - Never silently replace an integration, agent, workflow, webhook, or policy managed by another state.
-- Never auto-approve a PR. Never auto-merge except for the `security-control-bootstrap` exception explicitly authorized in `references/coolify-security-demo-contract.md`; that exception cannot merge application code.
+- Never auto-approve a PR. Never auto-merge except for the `security-control-bootstrap` exception explicitly authorized in `references/security-demo-contract.md`; that exception cannot merge application code.
 - Keep webhook payloads and runbook output free of raw credentials and unnecessary customer data.
 - Give each agent a daily budget and each active probe a target allowlist, request limit, and time limit.
 - Do not add a `codex` prefix to branches or Codex co-author trailers to commits.

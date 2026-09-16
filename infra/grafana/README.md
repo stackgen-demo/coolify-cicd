@@ -6,8 +6,8 @@ Retrieve the dedicated provisioner token without printing it:
 
 ```bash
 export TF_VAR_grafana_auth="$(security find-generic-password \
-  -a coolify-security-demo \
-  -s com.stackgen.coolify-security-demo.grafana \
+  -a security-demo \
+  -s com.stackgen.security-demo.grafana \
   -w)"
 tofu init
 tofu fmt -check -recursive

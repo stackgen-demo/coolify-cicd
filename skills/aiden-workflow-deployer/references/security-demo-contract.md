@@ -1,4 +1,4 @@
-# Coolify Security Demo Aiden Contract
+# Security Demo Aiden Contract
 
 ## Goal
 
@@ -128,8 +128,8 @@ Use a dedicated Grafana Terraform service account, not the administrator passwor
 
 ```bash
 export GRAFANA_AUTH="$(security find-generic-password \
-  -a coolify-security-demo \
-  -s com.stackgen.coolify-security-demo.grafana \
+  -a security-demo \
+  -s com.stackgen.security-demo.grafana \
   -w)"
 ```
 

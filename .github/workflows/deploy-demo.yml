@@ -17,7 +17,7 @@ permissions:
   id-token: write
 
 concurrency:
-  group: coolify-security-demo-deployment
+  group: security-demo-deployment
   cancel-in-progress: false
 
 jobs:
@@ -66,17 +66,17 @@ jobs:
             --jq '[.check_runs[] | select(.name == "security-gate")] | sort_by(.completed_at) | last | .conclusion')"
           test "${conclusion}" = "success"
 
-      - name: Configure AWS credentials for private Coolify control and evidence
+      - name: Configure AWS credentials for private deployment control and evidence
         uses: aws-actions/configure-aws-credentials@7474bc4690e29a8392af63c5b98e7449536d5c3a # v4
         with:
           role-to-assume: ${{ vars.POSTDEPLOY_AWS_ROLE_ARN }}
           aws-region: ${{ vars.AWS_REGION }}
 
-      - name: Trigger Coolify redeployment through SSM
+      - name: Trigger application redeployment through SSM
         id: coolify
         run: scripts/postdeploy/trigger-coolify-via-ssm.sh
 
-      - name: Watch Coolify deployment
+      - name: Watch application deployment
         env:
           DEPLOYMENT_UUID: ${{ steps.coolify.outputs.deployment_uuid }}
         run: scripts/postdeploy/wait-for-coolify-via-ssm.sh
@@ -145,7 +145,7 @@ jobs:
           docker run --rm --volume "${PWD}:/workspace" --workdir /workspace \
             openpolicyagent/opa@sha256:57f7d06808fff6de3ea1d698e6430990973ca1370be0e54975f0083d615521da \
             eval --format=json --data policies/postdeploy.rego --input evidence/postdeploy.json \
-            'data.coolify_security_demo.postdeploy.decision' > evidence/policy-decision.json
+            'data.security_demo.postdeploy.decision' > evidence/policy-decision.json
           node scripts/postdeploy/render-report.mjs
           jq -e '.result[0].expressions[0].value.allow == true' evidence/policy-decision.json
 

@@ -33,7 +33,7 @@ for (const [name, token] of Object.entries(cases)) {
     headers: {
       ...(token ? { authorization: `Bearer ${token}` } : {}),
       "x-demo-run-id": process.env.DEMO_RUN_ID,
-      [process.env.WAF_HEADER_NAME ?? "x-demo-client"]: process.env.WAF_HEADER_VALUE ?? "coolify-security-demo",
+      [process.env.WAF_HEADER_NAME ?? "x-demo-client"]: process.env.WAF_HEADER_VALUE ?? "security-demo",
     },
     redirect: "manual",
   });

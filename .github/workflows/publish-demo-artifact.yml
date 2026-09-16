@@ -14,7 +14,7 @@ permissions:
   packages: write
 
 concurrency:
-  group: coolify-security-demo-artifact
+  group: security-demo-artifact
   cancel-in-progress: false
 
 jobs:

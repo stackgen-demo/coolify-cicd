@@ -48,7 +48,7 @@ variable "default_branch" {
 variable "name_suffix" {
   description = "Stable collision-avoidance suffix."
   type        = string
-  default     = "-coolify-security-demo"
+  default     = "-security-demo"
 
   validation {
     condition     = can(regex("^-[a-z0-9-]+$", var.name_suffix))
@@ -123,7 +123,7 @@ variable "direct_pentest_waf_header_name" {
 variable "direct_pentest_waf_header_value" {
   description = "Non-secret demo header value accepted by WAF on /api paths."
   type        = string
-  default     = "coolify-security-demo"
+  default     = "security-demo"
 }
 
 variable "webhook_allowed_cidrs" {

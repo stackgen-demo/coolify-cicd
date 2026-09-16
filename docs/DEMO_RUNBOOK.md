@@ -21,8 +21,8 @@ Build the reviewed application once for the EC2 architecture and push it to the 
 
 ```bash
 docker buildx build --platform linux/amd64 --push \
-  --tag REGISTRY/coolify-security-demo:reviewed app
-docker buildx imagetools inspect REGISTRY/coolify-security-demo:reviewed
+  --tag REGISTRY/security-demo:reviewed app
+docker buildx imagetools inspect REGISTRY/security-demo:reviewed
 ```
 
 Record the resulting full `REGISTRY/name@sha256:...` reference. Use that exact value for Coolify's `DEMO_IMAGE_REFERENCE`; set the digest portion as the GitHub `DEMO_IMAGE_DIGEST` variable. The demo intentionally redeploys this same artifact on every run.
@@ -58,8 +58,8 @@ Confirm the current data-source UIDs before apply. The defaults are `metrics`, `
 
 ```bash
 export TF_VAR_grafana_auth="$(security find-generic-password \
-  -a coolify-security-demo \
-  -s com.stackgen.coolify-security-demo.grafana \
+  -a security-demo \
+  -s com.stackgen.security-demo.grafana \
   -w)"
 tofu -chdir=infra/grafana init
 tofu -chdir=infra/grafana plan -out=tfplan
@@ -75,9 +75,9 @@ Follow `skills/aiden-workflow-deployer/SKILL.md`. Provide only the StackGen URL,
 
 The root creates these Automation webhook targets:
 
-- `security-control-bootstrap-coolify-security-demo`: called when an application PR opens;
-- `pr-security-review-coolify-security-demo`: called after deterministic PR jobs finish;
-- `postdeploy-adversarial-assurance-coolify-security-demo`: called after deployment, or manually with only the exact target URL and AWS region for an expedited direct assessment.
+- `security-control-bootstrap-security-demo`: called when an application PR opens;
+- `pr-security-review-security-demo`: called after deterministic PR jobs finish;
+- `postdeploy-adversarial-assurance-security-demo`: called after deployment, or manually with only the exact target URL and AWS region for an expedited direct assessment.
 
 The expedited post-deployment workflow reads AWS posture and directly probes the allowlisted deployment with bounded Nmap, HTTPS/TLS, WAF-header, security-header, and unauthenticated authentication checks. It does not require a GitHub workflow workspace or observability evidence; those signals are marked NOT ASSESSED instead of blocking. It publishes the SOC 2-oriented assessment first, then creates one Linear issue through the existing `devops-linear` integration. The issue uses `demo_run_id`, or the Aiden execution ID when it is absent, as its retry-safe marker and contains only redacted results and evidence links.
 
@@ -108,4 +108,4 @@ Create protected environments `demo-deploy` and `demo-reset`; require operator a
 
 Open an application PR labeled `demo-application`. Watch the two PRs, the injected security jobs, the Aiden comments, Coolify's deployment view, the GitHub post-deployment job, and the Grafana dashboard.
 
-After the report is complete, manually dispatch `Reset Coolify demo` with the recorded application/control PRs and merge SHAs, controls branch, completed run ID, deployment UUID, image digest, and report location. The reset reverts repository state only. The same immutable app remains running; Coolify deployment history, reports, Aiden history, and observability data remain available.
+After the report is complete, manually dispatch `Reset security demo` with the recorded application/control PRs and merge SHAs, controls branch, completed run ID, deployment UUID, image digest, and report location. The reset reverts repository state only. The same immutable app remains running; Coolify deployment history, reports, Aiden history, and observability data remain available.
