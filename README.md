@@ -1,4 +1,4 @@
-# Talkdesk secure delivery demo
+# Coolify secure delivery demo
 
 This repository is a runnable demonstration of agents augmenting a weak manual CI/CD process without letting an agent decide deterministic security policy. Aiden installs a reviewed security workflow, GitHub Actions performs the scans, Coolify redeploys one immutable application artifact to EC2, and Aiden explains the resulting evidence.
 

@@ -6,10 +6,10 @@ import type { AppConfig } from "./config.js";
 const config: AppConfig = {
   PORT: 3000,
   AUTH_ISSUER: "https://auth.demo.invalid/",
-  AUTH_AUDIENCE: "talkdesk-coolify-demo",
+  AUTH_AUDIENCE: "coolify-security-demo",
   AUTH_HS256_SECRET: "01234567890123456789012345678901",
   OTEL_EXPORTER_OTLP_ENDPOINT: "http://collector.invalid:4318",
-  OTEL_SERVICE_NAME: "talkdesk-coolify-demo",
+  OTEL_SERVICE_NAME: "coolify-security-demo",
 };
 
 const sign = async ({

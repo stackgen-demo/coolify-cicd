@@ -3,7 +3,7 @@ import { currentTraceId } from "./telemetry.js";
 
 type Fields = Record<string, boolean | number | string | undefined>;
 
-const otelLogger = logs.getLogger("talkdesk-demo-app");
+const otelLogger = logs.getLogger("coolify-security-demo-app");
 
 export function log(level: "error" | "info" | "warn", message: string, fields: Fields = {}): void {
   const body = {

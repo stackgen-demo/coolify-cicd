@@ -17,7 +17,7 @@ permissions:
   id-token: write
 
 concurrency:
-  group: talkdesk-demo-deployment
+  group: coolify-security-demo-deployment
   cancel-in-progress: false
 
 jobs:
@@ -145,7 +145,7 @@ jobs:
           docker run --rm --volume "${PWD}:/workspace" --workdir /workspace \
             openpolicyagent/opa@sha256:57f7d06808fff6de3ea1d698e6430990973ca1370be0e54975f0083d615521da \
             eval --format=json --data policies/postdeploy.rego --input evidence/postdeploy.json \
-            'data.talkdesk.postdeploy.decision' > evidence/policy-decision.json
+            'data.coolify_security_demo.postdeploy.decision' > evidence/policy-decision.json
           node scripts/postdeploy/render-report.mjs
           jq -e '.result[0].expressions[0].value.allow == true' evidence/policy-decision.json
 

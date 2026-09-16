@@ -48,7 +48,7 @@ variable "default_branch" {
 variable "name_suffix" {
   description = "Stable collision-avoidance suffix."
   type        = string
-  default     = "-talkdesk-demo"
+  default     = "-coolify-security-demo"
 
   validation {
     condition     = can(regex("^-[a-z0-9-]+$", var.name_suffix))
@@ -90,7 +90,6 @@ variable "aws_region" {
 variable "direct_pentest_target_url" {
   description = "Exact HTTPS URL allowlisted for the expedited direct post-deployment assessment."
   type        = string
-  default     = "https://talkdesk-coolify.demo.stackgen.com"
 
   validation {
     condition     = can(regex("^https://[A-Za-z0-9.-]+(?::[0-9]+)?/?$", var.direct_pentest_target_url))
@@ -101,7 +100,6 @@ variable "direct_pentest_target_url" {
 variable "direct_pentest_alb_arn" {
   description = "Exact demo ALB ARN allowlisted for direct AWS posture reads."
   type        = string
-  default     = "arn:aws:elasticloadbalancing:us-east-1:180217099948:loadbalancer/app/talkdesk-coolify-demo/3f4b3a514b72ef3a"
 }
 
 variable "direct_pentest_alb_security_group_id" {
@@ -125,7 +123,7 @@ variable "direct_pentest_waf_header_name" {
 variable "direct_pentest_waf_header_value" {
   description = "Non-secret demo header value accepted by WAF on /api paths."
   type        = string
-  default     = "talkdesk-security-demo"
+  default     = "coolify-security-demo"
 }
 
 variable "webhook_allowed_cidrs" {

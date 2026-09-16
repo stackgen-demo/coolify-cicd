@@ -14,7 +14,7 @@ permissions:
   packages: write
 
 concurrency:
-  group: talkdesk-demo-artifact
+  group: coolify-security-demo-artifact
   cancel-in-progress: false
 
 jobs:

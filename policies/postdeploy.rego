@@ -1,4 +1,4 @@
-package talkdesk.postdeploy
+package coolify_security_demo.postdeploy
 
 import rego.v1
 

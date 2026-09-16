@@ -12,3 +12,8 @@ grafana_integration_name = "sandbox-grafana"
 aws_integration_name     = "stackgen-sandbox"
 remote_runner_name       = "demo-runner"
 linear_integration_name  = "devops-linear"
+
+# Per-environment allowlist for the expedited direct assessment. Keep the live
+# values outside version control (for example as TF_VAR_* environment variables).
+direct_pentest_target_url = "https://demo.example.com"
+direct_pentest_alb_arn    = "arn:aws:elasticloadbalancing:REGION:ACCOUNT_ID:loadbalancer/app/demo/ID"

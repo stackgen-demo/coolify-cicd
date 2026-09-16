@@ -8,7 +8,7 @@ services:
       AUTH_ISSUER: ${AUTH_ISSUER}
       OTEL_EXPORTER_OTLP_ENDPOINT: http://otel-collector:4318
       OTEL_RESOURCE_ATTRIBUTES: deployment.environment.name=${DEPLOYMENT_ENVIRONMENT:-demo}
-      OTEL_SERVICE_NAME: talkdesk-coolify-demo
+      OTEL_SERVICE_NAME: coolify-security-demo
       PORT: "3000"
     depends_on:
       otel-collector:

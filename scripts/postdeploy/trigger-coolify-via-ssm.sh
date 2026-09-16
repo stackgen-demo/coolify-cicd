@@ -11,7 +11,7 @@ if ! [[ "${COOLIFY_APPLICATION_UUID}" =~ ^[A-Za-z0-9-]+$ ]]; then
 fi
 
 parameters="$(jq -cn --arg app_uuid "${COOLIFY_APPLICATION_UUID}" \
-  '{commands:["sudo /usr/local/bin/talkdesk-coolify-deploy " + $app_uuid]}')"
+  '{commands:["sudo /usr/local/bin/coolify-security-demo-deploy " + $app_uuid]}')"
 
 command_id="$(aws ssm send-command \
   --region "${AWS_REGION}" \
