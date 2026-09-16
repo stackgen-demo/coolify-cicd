@@ -358,7 +358,7 @@ resource "sg_workflow" "postdeploy" {
   approve     = true
 
   required_inputs = ["target_url", "aws_region"]
-  optional_inputs = ["repository_full_name", "commit_sha", "image_digest", "coolify_deployment_uuid", "demo_run_id", "evidence_run_id", "report_location"]
+  optional_inputs = ["repository_full_name", "commit_sha", "image_digest", "deployment_uuid", "demo_run_id", "evidence_run_id", "report_location"]
   runbook_refs    = [sg_runbook_sop.postdeploy.name]
 
   stages = [

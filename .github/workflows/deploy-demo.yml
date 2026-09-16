@@ -194,12 +194,12 @@ jobs:
             --arg repository_full_name "${GITHUB_REPOSITORY}" \
             --arg commit_sha "${SOURCE_COMMIT_SHA}" \
             --arg image_digest "${DEMO_IMAGE_DIGEST}" \
-            --arg coolify_deployment_uuid "${DEPLOYMENT_UUID}" \
+            --arg deployment_uuid "${DEPLOYMENT_UUID}" \
             --arg target_url "${TARGET_URL}" \
             --arg aws_region "${AWS_REGION}" \
             --arg demo_run_id "${DEMO_RUN_ID}" \
             --arg report_location "${REPORT_LOCATION}" \
             --argjson evidence_run_id "${GITHUB_RUN_ID}" \
-            '{repository_full_name:$repository_full_name,commit_sha:$commit_sha,image_digest:$image_digest,coolify_deployment_uuid:$coolify_deployment_uuid,target_url:$target_url,aws_region:$aws_region,demo_run_id:$demo_run_id,evidence_run_id:$evidence_run_id,report_location:$report_location}')"
+            '{repository_full_name:$repository_full_name,commit_sha:$commit_sha,image_digest:$image_digest,deployment_uuid:$deployment_uuid,target_url:$target_url,aws_region:$aws_region,demo_run_id:$demo_run_id,evidence_run_id:$evidence_run_id,report_location:$report_location}')"
           curl --fail-with-body --silent --show-error --retry 3 --retry-all-errors \
             --header 'content-type: application/json' --data "${payload}" "${AIDEN_WEBHOOK_URL}" >/dev/null
