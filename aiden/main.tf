@@ -358,7 +358,7 @@ resource "sg_workflow" "postdeploy" {
   approve     = true
 
   required_inputs = ["target_url", "aws_region"]
-  optional_inputs = ["repository_full_name", "commit_sha", "image_digest", "coolify_deployment_uuid", "demo_run_id", "evidence_run_id", "report_location"]
+  optional_inputs = ["repository_full_name", "commit_sha", "image_digest", "deployment_uuid", "demo_run_id", "evidence_run_id", "report_location"]
   runbook_refs    = [sg_runbook_sop.postdeploy.name]
 
   stages = [
@@ -385,7 +385,7 @@ resource "sg_workflow" "postdeploy" {
 resource "sg_webhook" "bootstrap" {
   name           = "security-control-bootstrap${var.name_suffix}"
   target_type    = "workflow"
-  target_name    = sg_workflow.bootstrap.name
+  target_name    = "security-control-bootstrap${var.name_suffix}"
   action         = "A same-repository application PR opened. Validate scope and bootstrap only the reviewed deterministic security controls."
   enabled        = true
   allowed_cidrs  = length(var.webhook_allowed_cidrs) > 0 ? var.webhook_allowed_cidrs : null
@@ -395,7 +395,7 @@ resource "sg_webhook" "bootstrap" {
 resource "sg_webhook" "pr_review" {
   name           = "pr-security-review${var.name_suffix}"
   target_type    = "workflow"
-  target_name    = sg_workflow.pr_review.name
+  target_name    = "pr-security-review${var.name_suffix}"
   action         = "A deterministic PR security workflow completed. Correlate its evidence and publish one review without changing the gate conclusion."
   enabled        = true
   allowed_cidrs  = length(var.webhook_allowed_cidrs) > 0 ? var.webhook_allowed_cidrs : null
@@ -405,7 +405,7 @@ resource "sg_webhook" "pr_review" {
 resource "sg_webhook" "postdeploy" {
   name           = "postdeploy-adversarial-assurance${var.name_suffix}"
   target_type    = "workflow"
-  target_name    = sg_workflow.postdeploy.name
+  target_name    = "postdeploy-adversarial-assurance${var.name_suffix}"
   action         = "Directly assess the exact allowlisted deployed host and AWS posture. Do not require a workflow workspace, evidence artifacts, demo_run_id, or observability data. Mark observability NOT ASSESSED, publish a redacted assessment, then create one Linear issue."
   enabled        = true
   allowed_cidrs  = length(var.webhook_allowed_cidrs) > 0 ? var.webhook_allowed_cidrs : null

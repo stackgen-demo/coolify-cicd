@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 set -euo pipefail
-exec > >(tee -a /var/log/talkdesk-demo-bootstrap.log) 2>&1
+exec > >(tee -a /var/log/security-demo-bootstrap.log) 2>&1
 
 export AWS_DEFAULT_REGION="${aws_region}"
 export DEBIAN_FRONTEND=noninteractive
@@ -25,9 +25,9 @@ echo "${coolify_sha256}  /tmp/coolify-install.sh" | sha256sum --check --strict
 chmod 0700 /tmp/coolify-install.sh
 /tmp/coolify-install.sh
 
-install -d -m 0755 /usr/local/lib/talkdesk-coolify
+install -d -m 0755 /usr/local/lib/security-demo
 
-cat > /usr/local/bin/talkdesk-coolify-deploy <<'EOF'
+cat > /usr/local/bin/security-demo-deploy <<'EOF'
 #!/usr/bin/env bash
 set -euo pipefail
 
@@ -47,9 +47,9 @@ curl --fail-with-body --silent --show-error \
   --header "Authorization: Bearer $${coolify_token}" \
   "http://127.0.0.1:8000/api/v1/applications/$${application_uuid}/start?force=false"
 EOF
-chmod 0750 /usr/local/bin/talkdesk-coolify-deploy
+chmod 0750 /usr/local/bin/security-demo-deploy
 
-cat > /usr/local/bin/talkdesk-coolify-deployment-status <<'EOF'
+cat > /usr/local/bin/security-demo-deployment-status <<'EOF'
 #!/usr/bin/env bash
 set -euo pipefail
 
@@ -69,7 +69,7 @@ curl --fail-with-body --silent --show-error \
   --header "Authorization: Bearer $${coolify_token}" \
   "http://127.0.0.1:8000/api/v1/deployments/$${deployment_uuid}"
 EOF
-chmod 0750 /usr/local/bin/talkdesk-coolify-deployment-status
+chmod 0750 /usr/local/bin/security-demo-deployment-status
 
 opsverse_token="$(aws secretsmanager get-secret-value \
   --secret-id "${opsverse_secret_arn}" \

@@ -13,7 +13,7 @@ set -euo pipefail
 
 mkdir -p evidence/observability
 
-metric_query="talkdesk_demo_http_requests_total{demo_run_id=\"${DEMO_RUN_ID}\"}"
+metric_query="security_demo_http_requests_total{demo_run_id=\"${DEMO_RUN_ID}\"}"
 trace_tags="$(jq -cn --arg id "${DEMO_RUN_ID}" '{"demo.run_id":$id}')"
 
 metrics_found=false
@@ -27,11 +27,11 @@ for _ in $(seq 1 12); do
     --data-urlencode "query=${metric_query}" "${VICTORIA_METRICS_QUERY_URL}")"
   logs="$(curl --fail-with-body --silent --show-error --get \
     --user "${OBSERVENOW_USERNAME}:${OBSERVENOW_PASSWORD}" \
-    --data-urlencode "query={service_name=\"talkdesk-coolify-demo\"} |= \"${DEMO_RUN_ID}\"" \
+    --data-urlencode "query={service_name=\"security-demo\"} |= \"${DEMO_RUN_ID}\"" \
     --data-urlencode "limit=20" "${LOKI_URL%/}/loki/api/v1/query_range")"
   traces="$(curl --fail-with-body --silent --show-error --get \
     --header "Authorization: Bearer ${GRAFANA_READER_TOKEN}" \
-    --data-urlencode "service=talkdesk-coolify-demo" \
+    --data-urlencode "service=security-demo" \
     --data-urlencode "tags=${trace_tags}" \
     "${GRAFANA_URL%/}/api/datasources/proxy/uid/${JAEGER_DATASOURCE_UID}/api/traces")"
   opsverse="$(curl --fail-with-body --silent --show-error --get \

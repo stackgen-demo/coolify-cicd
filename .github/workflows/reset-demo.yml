@@ -1,4 +1,4 @@
-name: Reset Talkdesk demo
+name: Reset security demo
 
 on:
   workflow_dispatch:
@@ -45,7 +45,7 @@ permissions:
   pull-requests: write
 
 concurrency:
-  group: talkdesk-demo-reset
+  group: security-demo-reset
   cancel-in-progress: false
 
 jobs:
@@ -86,8 +86,8 @@ jobs:
         run: |
           set -euo pipefail
           reset_branch="demo-reset/${GITHUB_RUN_ID}"
-          git config user.name "talkdesk-demo-reset[bot]"
-          git config user.email "talkdesk-demo-reset[bot]@users.noreply.github.com"
+          git config user.name "security-demo-reset[bot]"
+          git config user.email "security-demo-reset[bot]@users.noreply.github.com"
           git switch -c "${reset_branch}"
           revert_recorded_change() {
             local commit_sha="$1"
@@ -123,7 +123,7 @@ jobs:
             --arg report_location '${{ inputs.report_location }}' \
             '{completed_run_id:$completed_run_id,application_pr:$application_pr,controls_pr:$controls_pr,application_merge_sha:$application_merge_sha,controls_merge_sha:$controls_merge_sha,deployment_uuid:$deployment_uuid,image_digest:$image_digest,report_location:$report_location}')"
           reset_pr="$(gh pr create --base "${GITHUB_REF_NAME}" --head "${RESET_BRANCH}" \
-            --title "Reset Talkdesk demo after run ${GITHUB_RUN_ID}" \
+            --title "Reset security demo after run ${GITHUB_RUN_ID}" \
             --label demo-reset \
             --body "Operator-approved reset. No runtime deployment.\n\n\`\`\`json\n${body}\n\`\`\`")"
           gh pr merge "${reset_pr}" --merge --admin --delete-branch

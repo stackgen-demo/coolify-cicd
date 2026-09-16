@@ -7,7 +7,7 @@ variable "aws_region" {
 variable "name_prefix" {
   description = "Stable prefix for AWS resource names."
   type        = string
-  default     = "talkdesk-coolify-demo"
+  default     = "security-demo"
 
   validation {
     condition     = can(regex("^[a-z0-9-]+$", var.name_prefix))
@@ -89,7 +89,7 @@ variable "waf_header_name" {
 variable "waf_header_value" {
   description = "Non-secret expected value for the WAF demo header."
   type        = string
-  default     = "talkdesk-security-demo"
+  default     = "security-demo"
 }
 
 variable "opsverse_agent_secret_arn" {

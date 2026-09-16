@@ -6,7 +6,7 @@ const schema = z.object({
   AUTH_AUDIENCE: z.string().min(1),
   AUTH_HS256_SECRET: z.string().min(32),
   OTEL_EXPORTER_OTLP_ENDPOINT: z.string().url().default("http://otel-collector:4318"),
-  OTEL_SERVICE_NAME: z.string().min(1).default("talkdesk-coolify-demo"),
+  OTEL_SERVICE_NAME: z.string().min(1).default("security-demo"),
 });
 
 export type AppConfig = z.infer<typeof schema>;

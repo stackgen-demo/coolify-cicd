@@ -1,5 +1,5 @@
 resource "grafana_folder" "demo" {
-  title = "Talkdesk Secure Delivery Demo"
+  title = "Secure Delivery Demo"
 }
 
 resource "grafana_dashboard" "demo" {
@@ -15,23 +15,23 @@ resource "grafana_dashboard" "demo" {
 }
 
 resource "grafana_rule_group" "demo" {
-  name             = "Talkdesk demo application health"
+  name             = "Demo application health"
   folder_uid       = grafana_folder.demo.uid
   interval_seconds = 60
 
   rule {
-    name           = "Talkdesk demo 5xx responses"
+    name           = "Demo 5xx responses"
     condition      = "C"
     for            = "5m"
     no_data_state  = "OK"
     exec_err_state = "Error"
 
     annotations = {
-      summary = "The Talkdesk demo application is returning HTTP 5xx responses."
+      summary = "The demo application is returning HTTP 5xx responses."
     }
 
     labels = {
-      service  = "talkdesk-coolify-demo"
+      service  = "security-demo"
       severity = "warning"
     }
 
@@ -44,7 +44,7 @@ resource "grafana_rule_group" "demo" {
       }
       model = jsonencode({
         editorMode    = "code"
-        expr          = "sum(rate(talkdesk_demo_http_requests_total{http_response_status_code=~\"5..\"}[5m]))"
+        expr          = "sum(rate(security_demo_http_requests_total{http_response_status_code=~\"5..\"}[5m]))"
         instant       = false
         intervalMs    = 1000
         legendFormat  = "5xx rate"

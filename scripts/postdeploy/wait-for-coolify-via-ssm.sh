@@ -13,7 +13,7 @@ fi
 deadline=$((SECONDS + 900))
 while ((SECONDS < deadline)); do
   parameters="$(jq -cn --arg deployment_uuid "${DEPLOYMENT_UUID}" \
-    '{commands:["sudo /usr/local/bin/talkdesk-coolify-deployment-status " + $deployment_uuid]}')"
+    '{commands:["sudo /usr/local/bin/security-demo-deployment-status " + $deployment_uuid]}')"
   command_id="$(aws ssm send-command \
     --region "${AWS_REGION}" \
     --document-name AWS-RunShellScript \
